@@ -25,21 +25,6 @@ public class ProjectService {
         return projectRepository.findById(projectId);
     }
     
-    // Create new project
-    public Project createProject(Project project) {
-        return projectRepository.save(project);
-    }
-    
-    // Update project
-    public Project updateProject(Project project) {
-        return projectRepository.save(project);
-    }
-    
-    // Delete project
-    public void deleteProject(Integer projectId) {
-        projectRepository.deleteById(projectId);
-    }
-    
     // Get projects by team
     public List<Project> getProjectsByTeam(Integer teamId) {
         return projectRepository.findByTeam_TeamId(teamId);
@@ -53,6 +38,37 @@ public class ProjectService {
     // Get projects by team and status
     public List<Project> getProjectsByTeamAndStatus(Integer teamId, ProjectStatus status) {
         return projectRepository.findByTeam_TeamIdAndStatus(teamId, status);
+    }
+    
+    // Get projects by priority
+    public List<Project> getProjectsByPriority(String priority) {
+        return projectRepository.findByPriority(priority);
+    }
+    
+    // Create new project
+    public Project createProject(Project project) {
+        return projectRepository.save(project);
+    }
+    
+    // Update project
+    public Project updateProject(Integer projectId, Project projectDetails) {
+        Project existingProject = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
+        
+        // Update fields
+        existingProject.setProjectName(projectDetails.getProjectName());
+        existingProject.setDescription(projectDetails.getDescription());
+        existingProject.setStatus(projectDetails.getStatus());
+        existingProject.setPriority(projectDetails.getPriority());
+        existingProject.setStartDate(projectDetails.getStartDate());
+        existingProject.setEndDate(projectDetails.getEndDate());
+        
+        return projectRepository.save(existingProject);
+    }
+    
+    // Delete project
+    public void deleteProject(Integer projectId) {
+        projectRepository.deleteById(projectId);
     }
     
     // Search projects by name

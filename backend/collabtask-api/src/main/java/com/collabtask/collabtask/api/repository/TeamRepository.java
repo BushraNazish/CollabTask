@@ -11,7 +11,7 @@ import com.collabtask.collabtask.api.entity.Team;
 public interface TeamRepository extends JpaRepository<Team, Integer> {
     
     // Find teams created by a specific user
-    List<Team> findByCreatedBy_UserId(Integer userId);
+    List<Team> findByCreatedBy_UserId(Integer creatorId);  // CHANGED: userId → creatorId
     
     // Find team by name
     List<Team> findByTeamNameContaining(String teamName);

@@ -1,85 +1,82 @@
 package com.collabtask.collabtask.api.controller;
 
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.collabtask.collabtask.api.entity.Project;
 import com.collabtask.collabtask.api.entity.ProjectStatus;
 import com.collabtask.collabtask.api.service.ProjectService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/projects")
+@RequestMapping("/projects")
 public class ProjectController {
-    
+
     @Autowired
     private ProjectService projectService;
-    
-    // GET /api/projects - Get all projects (with optional filters)
+
+    // Get all projects - Any authenticated user
     @GetMapping
-    public ResponseEntity<List<Project>> getAllProjects(
-            @RequestParam(required = false) Integer teamId,
-            @RequestParam(required = false) ProjectStatus status,
-            @RequestParam(required = false) String search) {
-        
-        List<Project> projects;
-        
-        // Apply filters based on query parameters
-        if (teamId != null && status != null) {
-            projects = projectService.getProjectsByTeamAndStatus(teamId, status);
-        } else if (teamId != null) {
-            projects = projectService.getProjectsByTeam(teamId);
-        } else if (status != null) {
-            projects = projectService.getProjectsByStatus(status);
-        } else if (search != null) {
-            projects = projectService.searchProjectsByName(search);
-        } else {
-            projects = projectService.getAllProjects();
-        }
-        
-        return ResponseEntity.ok(projects);
+    public List<Project> getAllProjects() {
+        return projectService.getAllProjects();
     }
-    
-    // GET /api/projects/{id} - Get project by ID
+
+    // Get project by ID - Any authenticated user
     @GetMapping("/{id}")
     public ResponseEntity<Project> getProjectById(@PathVariable Integer id) {
-        Optional<Project> project = projectService.getProjectById(id);
-        return project.map(ResponseEntity::ok)
-                      .orElse(ResponseEntity.notFound().build());
+        return projectService.getProjectById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
-    
-    // POST /api/projects - Create new project
+
+    // Get projects by team - Any authenticated user
+    @GetMapping("/team/{teamId}")
+    public List<Project> getProjectsByTeam(@PathVariable Integer teamId) {
+        return projectService.getProjectsByTeam(teamId);
+    }
+
+    // Get projects by status - Any authenticated user
+    @GetMapping("/status/{status}")
+    public List<Project> getProjectsByStatus(@PathVariable ProjectStatus status) {
+        return projectService.getProjectsByStatus(status);
+    }
+
+    // Get projects by priority - Any authenticated user
+    @GetMapping("/priority/{priority}")
+    public List<Project> getProjectsByPriority(@PathVariable String priority) {
+        return projectService.getProjectsByPriority(priority);
+    }
+
+    // Create project - ADMIN and MANAGER only
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping
-    public ResponseEntity<Project> createProject(@RequestBody Project project) {
-        Project createdProject = projectService.createProject(project);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdProject);
+    public Project createProject(@RequestBody Project project) {
+        return projectService.createProject(project);
     }
-    
-    // PUT /api/projects/{id} - Update project
+
+    // Update project - ADMIN and MANAGER only
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PutMapping("/{id}")
-    public ResponseEntity<Project> updateProject(
-            @PathVariable Integer id,
-            @RequestBody Project project) {
-        Optional<Project> existingProject = projectService.getProjectById(id);
-        if (existingProject.isPresent()) {
-            project.setProjectId(id);
-            Project updatedProject = projectService.updateProject(project);
-            return ResponseEntity.ok(updatedProject);
-        }
-        return ResponseEntity.notFound().build();
+    public ResponseEntity<Project> updateProject(@PathVariable Integer id, @RequestBody Project projectDetails) {
+        Project updatedProject = projectService.updateProject(id, projectDetails);
+        return ResponseEntity.ok(updatedProject);
     }
-    
-    // DELETE /api/projects/{id} - Delete project
+
+    // Delete project - ADMIN only
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Integer id) {
-        Optional<Project> project = projectService.getProjectById(id);
-        if (project.isPresent()) {
-            projectService.deleteProject(id);
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
+        projectService.deleteProject(id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -36,14 +36,26 @@ public class TeamService {
         return teamRepository.findById(teamId);
     }
     
+    // Get teams by creator - NEW METHOD
+    public List<Team> getTeamsByCreator(Integer creatorId) {
+        return teamRepository.findByCreatedBy_UserId(creatorId);
+    }
+    
     // Create new team
     public Team createTeam(Team team) {
         return teamRepository.save(team);
     }
     
-    // Update team
-    public Team updateTeam(Team team) {
-        return teamRepository.save(team);
+    // Update team - UPDATED METHOD SIGNATURE
+    public Team updateTeam(Integer teamId, Team teamDetails) {
+        Team existingTeam = teamRepository.findById(teamId)
+                .orElseThrow(() -> new RuntimeException("Team not found with id: " + teamId));
+        
+        // Update fields
+        existingTeam.setTeamName(teamDetails.getTeamName());
+        existingTeam.setDescription(teamDetails.getDescription());
+        
+        return teamRepository.save(existingTeam);
     }
     
     // Delete team

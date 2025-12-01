@@ -1,7 +1,8 @@
 package com.collabtask.collabtask.api.entity;
 
 public enum ProjectStatus {
-    ACTIVE,
+    PLANNING,
+    IN_PROGRESS,
     COMPLETED,
     ON_HOLD
 }

@@ -1,11 +1,12 @@
 package com.collabtask.collabtask.api.repository;
 
-import com.collabtask.collabtask.api.entity.Project;
-import com.collabtask.collabtask.api.entity.ProjectStatus;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import com.collabtask.collabtask.api.entity.Project;
+import com.collabtask.collabtask.api.entity.ProjectStatus;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Integer> {
@@ -24,4 +25,7 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
     
     // Search projects by name
     List<Project> findByProjectNameContaining(String projectName);
+    
+    // Find projects by priority
+    List<Project> findByPriority(String priority);
 }

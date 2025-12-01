@@ -34,21 +34,6 @@ public class TaskService {
         return taskRepository.findById(taskId);
     }
     
-    // Create new task
-    public Task createTask(Task task) {
-        return taskRepository.save(task);
-    }
-    
-    // Update task
-    public Task updateTask(Task task) {
-        return taskRepository.save(task);
-    }
-    
-    // Delete task
-    public void deleteTask(Integer taskId) {
-        taskRepository.deleteById(taskId);
-    }
-    
     // Get tasks by project
     public List<Task> getTasksByProject(Integer projectId) {
         return taskRepository.findByProject_ProjectId(projectId);
@@ -79,6 +64,11 @@ public class TaskService {
         return taskRepository.findByProject_ProjectIdAndStatus(projectId, status);
     }
     
+    // Get tasks by assigned user and status
+    public List<Task> getTasksByAssignedUserAndStatus(Integer userId, TaskStatus status) {
+        return taskRepository.findByAssignedTo_UserIdAndStatus(userId, status);
+    }
+    
     // Get overdue tasks
     public List<Task> getOverdueTasks() {
         return taskRepository.findByDueDateBeforeAndStatusNot(
@@ -87,9 +77,35 @@ public class TaskService {
         );
     }
     
-    // Search tasks
+    // Search tasks by title
     public List<Task> searchTasks(String keyword) {
         return taskRepository.findByTitleContaining(keyword);
+    }
+    
+    // Create new task
+    public Task createTask(Task task) {
+        return taskRepository.save(task);
+    }
+    
+    // Update task - UPDATED METHOD SIGNATURE
+    public Task updateTask(Integer taskId, Task taskDetails) {
+        Task existingTask = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
+        
+        // Update fields
+        existingTask.setTitle(taskDetails.getTitle());
+        existingTask.setDescription(taskDetails.getDescription());
+        existingTask.setStatus(taskDetails.getStatus());
+        existingTask.setPriority(taskDetails.getPriority());
+        existingTask.setDueDate(taskDetails.getDueDate());
+        existingTask.setAssignedTo(taskDetails.getAssignedTo());
+        
+        return taskRepository.save(existingTask);
+    }
+    
+    // Delete task
+    public void deleteTask(Integer taskId) {
+        taskRepository.deleteById(taskId);
     }
     
     // Assign task to user

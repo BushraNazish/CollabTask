@@ -30,14 +30,27 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
     
+    // Get users by role - NEW METHOD ADDED
+    public List<User> getUsersByRole(String role) {
+        return userRepository.findByRole(role);
+    }
+    
     // Create new user
     public User createUser(User user) {
         return userRepository.save(user);
     }
     
-    // Update existing user
-    public User updateUser(User user) {
-        return userRepository.save(user);
+    // Update existing user - UPDATED METHOD SIGNATURE
+    public User updateUser(Integer userId, User userDetails) {
+        User existingUser = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        
+        // Update fields
+        existingUser.setName(userDetails.getName());
+        existingUser.setEmail(userDetails.getEmail());
+        existingUser.setRole(userDetails.getRole());
+        
+        return userRepository.save(existingUser);
     }
     
     // Delete user

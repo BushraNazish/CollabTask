@@ -1,11 +1,10 @@
 package com.collabtask.collabtask.api.controller;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,87 +19,74 @@ import com.collabtask.collabtask.api.entity.TeamMember;
 import com.collabtask.collabtask.api.service.TeamService;
 
 @RestController
-@RequestMapping("/api/teams")
+@RequestMapping("/teams")
 public class TeamController {
-    
+
     @Autowired
     private TeamService teamService;
-    
-    // GET /api/teams - Get all teams
+
+    // Get all teams - Any authenticated user
     @GetMapping
-    public ResponseEntity<List<Team>> getAllTeams() {
-        List<Team> teams = teamService.getAllTeams();
-        return ResponseEntity.ok(teams);
+    public List<Team> getAllTeams() {
+        return teamService.getAllTeams();
     }
-    
-    // GET /api/teams/{id} - Get team by ID
+
+    // Get team by ID - Any authenticated user
     @GetMapping("/{id}")
     public ResponseEntity<Team> getTeamById(@PathVariable Integer id) {
-        Optional<Team> team = teamService.getTeamById(id);
-        return team.map(ResponseEntity::ok)
-                   .orElse(ResponseEntity.notFound().build());
+        return teamService.getTeamById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
-    
-    // POST /api/teams - Create new team
+
+    // Get teams by creator - Any authenticated user
+    @GetMapping("/creator/{creatorId}")
+    public List<Team> getTeamsByCreator(@PathVariable Integer creatorId) {
+        return teamService.getTeamsByCreator(creatorId);
+    }
+
+    // Create team - ADMIN only
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<Team> createTeam(@RequestBody Team team) {
-        Team createdTeam = teamService.createTeam(team);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdTeam);
+    public Team createTeam(@RequestBody Team team) {
+        return teamService.createTeam(team);
     }
-    
-    // PUT /api/teams/{id} - Update team
+
+    // Update team - ADMIN only
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ResponseEntity<Team> updateTeam(@PathVariable Integer id, @RequestBody Team team) {
-        Optional<Team> existingTeam = teamService.getTeamById(id);
-        if (existingTeam.isPresent()) {
-            team.setTeamId(id);
-            Team updatedTeam = teamService.updateTeam(team);
-            return ResponseEntity.ok(updatedTeam);
-        }
-        return ResponseEntity.notFound().build();
+    public ResponseEntity<Team> updateTeam(@PathVariable Integer id, @RequestBody Team teamDetails) {
+        Team updatedTeam = teamService.updateTeam(id, teamDetails);
+        return ResponseEntity.ok(updatedTeam);
     }
-    
-    // DELETE /api/teams/{id} - Delete team
+
+    // Delete team - ADMIN only
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTeam(@PathVariable Integer id) {
-        Optional<Team> team = teamService.getTeamById(id);
-        if (team.isPresent()) {
-            teamService.deleteTeam(id);
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
+        teamService.deleteTeam(id);
+        return ResponseEntity.noContent().build();
     }
-    
-    // GET /api/teams/{id}/members - Get team members
-    @GetMapping("/{id}/members")
-    public ResponseEntity<List<TeamMember>> getTeamMembers(@PathVariable Integer id) {
-        List<TeamMember> members = teamService.getTeamMembers(id);
-        return ResponseEntity.ok(members);
-    }
-    
-    // POST /api/teams/{teamId}/members/{userId} - Add member to team
+
+    // Add team member - ADMIN only
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{teamId}/members/{userId}")
-    public ResponseEntity<TeamMember> addMemberToTeam(
-            @PathVariable Integer teamId,
-            @PathVariable Integer userId) {
-        try {
-            TeamMember teamMember = teamService.addMemberToTeam(teamId, userId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(teamMember);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+    public ResponseEntity<TeamMember> addTeamMember(@PathVariable Integer teamId, @PathVariable Integer userId) {
+        TeamMember teamMember = teamService.addMemberToTeam(teamId, userId);
+        return ResponseEntity.ok(teamMember);
     }
-    
-    // DELETE /api/teams/{teamId}/members/{userId} - Remove member from team
+
+    // Remove team member - ADMIN only
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{teamId}/members/{userId}")
-    public ResponseEntity<Void> removeMemberFromTeam(
-            @PathVariable Integer teamId,
-            @PathVariable Integer userId) {
-        try {
-            teamService.removeMemberFromTeam(teamId, userId);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<Void> removeTeamMember(@PathVariable Integer teamId, @PathVariable Integer userId) {
+        teamService.removeMemberFromTeam(teamId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Get team members - Any authenticated user
+    @GetMapping("/{teamId}/members")
+    public List<TeamMember> getTeamMembers(@PathVariable Integer teamId) {
+        return teamService.getTeamMembers(teamId);
     }
 }
