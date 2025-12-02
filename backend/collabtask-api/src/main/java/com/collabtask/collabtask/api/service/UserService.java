@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.collabtask.collabtask.api.entity.User;
+import com.collabtask.collabtask.api.exception.ResourceNotFoundException;
 import com.collabtask.collabtask.api.repository.UserRepository;
 
 @Service
@@ -30,7 +31,7 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
     
-    // Get users by role - NEW METHOD ADDED
+    // Get users by role
     public List<User> getUsersByRole(String role) {
         return userRepository.findByRole(role);
     }
@@ -40,10 +41,10 @@ public class UserService {
         return userRepository.save(user);
     }
     
-    // Update existing user - UPDATED METHOD SIGNATURE
+    // Update existing user - NOW THROWS CUSTOM EXCEPTION
     public User updateUser(Integer userId, User userDetails) {
         User existingUser = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         
         // Update fields
         existingUser.setName(userDetails.getName());
@@ -53,8 +54,11 @@ public class UserService {
         return userRepository.save(existingUser);
     }
     
-    // Delete user
+    // Delete user - NOW THROWS CUSTOM EXCEPTION
     public void deleteUser(Integer userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User", "id", userId);
+        }
         userRepository.deleteById(userId);
     }
     

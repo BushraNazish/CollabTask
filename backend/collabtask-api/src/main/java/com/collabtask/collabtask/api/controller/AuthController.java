@@ -5,7 +5,7 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,8 +15,13 @@ import com.collabtask.collabtask.api.dto.AuthResponse;
 import com.collabtask.collabtask.api.dto.LoginRequest;
 import com.collabtask.collabtask.api.dto.RegisterRequest;
 import com.collabtask.collabtask.api.entity.User;
+import com.collabtask.collabtask.api.entity.UserRole;
+import com.collabtask.collabtask.api.exception.DuplicateResourceException;
+import com.collabtask.collabtask.api.exception.InvalidCredentialsException;
 import com.collabtask.collabtask.api.repository.UserRepository;
 import com.collabtask.collabtask.api.security.JwtUtil;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/auth")
@@ -26,39 +31,40 @@ public class AuthController {
     private UserRepository userRepository;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private PasswordEncoder passwordEncoder;
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    @Autowired
+    private JwtUtil jwtUtil;
 
     // Register new user
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         // Check if email already exists
         Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
         if (existingUser.isPresent()) {
-            return ResponseEntity.badRequest().body("Email already registered");
+            throw new DuplicateResourceException("Email already registered");
         }
 
         // Create new user
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword())); // Hash password
-        user.setRole(request.getRole());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(UserRole.valueOf(request.getRole()));
         user.setCreatedAt(LocalDateTime.now());
 
         // Save user to database
         User savedUser = userRepository.save(user);
 
         // Generate JWT token
-        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getRole().toString());
+        String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getRole().name());
 
         // Create response
         AuthResponse response = new AuthResponse();
         response.setToken(token);
         response.setEmail(savedUser.getEmail());
         response.setName(savedUser.getName());
-        response.setRole(savedUser.getRole().toString());
+        response.setRole(savedUser.getRole().name());
         response.setMessage("User registered successfully");
 
         return ResponseEntity.ok(response);
@@ -66,30 +72,25 @@ public class AuthController {
 
     // Login user
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         // Find user by email
-        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
-        
-        if (!userOptional.isPresent()) {
-            return ResponseEntity.badRequest().body("Invalid email or password");
-        }
-
-        User user = userOptional.get();
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
         // Verify password
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            return ResponseEntity.badRequest().body("Invalid email or password");
+            throw new InvalidCredentialsException("Invalid email or password");
         }
 
         // Generate JWT token
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().toString());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
 
         // Create response
         AuthResponse response = new AuthResponse();
         response.setToken(token);
         response.setEmail(user.getEmail());
         response.setName(user.getName());
-        response.setRole(user.getRole().toString());
+        response.setRole(user.getRole().name());
         response.setMessage("Login successful");
 
         return ResponseEntity.ok(response);
