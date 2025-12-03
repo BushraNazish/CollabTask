@@ -25,7 +25,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
-@RequestMapping("/teams")
+@RequestMapping("/api/teams")
 @Tag(name = "Team Management", description = "Team CRUD operations - create, manage, and organize teams")
 @SecurityRequirement(name = "bearer-jwt")
 public class TeamController {

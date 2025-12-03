@@ -70,20 +70,20 @@ CollabTaskProject/
 ## 🔐 API Endpoints
 
 ### Authentication
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - User login
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - User login
 
 ### Users
-- `GET /users` - Get all users
-- `GET /users/{id}` - Get user by ID
-- `POST /users` - Create user
-- `PUT /users/{id}` - Update user
-- `DELETE /users/{id}` - Delete user
+- `GET /api/users` - Get all users
+- `GET /api/users/{id}` - Get user by ID
+- `POST /api/users` - Create user
+- `PUT /api/users/{id}` - Update user
+- `DELETE /api/users/{id}` - Delete user
 
 ### Teams
-- `GET /teams` - Get all teams
-- `GET /teams/{id}` - Get team by ID
-- `POST /teams` - Create team
+- `GET /api/teams` - Get all teams
+- `GET /api/teams/{id}` - Get team by ID
+- `POST /api/teams` - Create team
 - And more...
 
 ### Projects

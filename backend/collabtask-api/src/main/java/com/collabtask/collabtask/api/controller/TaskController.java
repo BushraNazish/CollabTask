@@ -27,7 +27,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
-@RequestMapping("/tasks")
+@RequestMapping("/api/tasks")
 @Tag(name = "Task Management", description = "Task CRUD operations - create, assign, and track tasks within projects")
 @SecurityRequirement(name = "bearer-jwt")
 public class TaskController {

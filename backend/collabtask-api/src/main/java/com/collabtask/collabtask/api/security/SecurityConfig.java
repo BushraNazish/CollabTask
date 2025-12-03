@@ -26,7 +26,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(
-                    "/auth/**",              // Authentication endpoints
+                    "/api/auth/**",          // Authentication endpoints
                     "/v3/api-docs/**",       // OpenAPI documentation JSON
                     "/swagger-ui/**",        // Swagger UI resources
                     "/swagger-ui.html"       // Swagger UI main page

@@ -25,7 +25,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
-@RequestMapping("/comments")
+@RequestMapping("/api/comments")
 @Tag(name = "Comment Management", description = "Comment operations - add comments and discussions to tasks")
 @SecurityRequirement(name = "bearer-jwt")
 public class CommentController {
