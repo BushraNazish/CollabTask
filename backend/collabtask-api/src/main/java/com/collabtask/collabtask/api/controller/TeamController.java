@@ -15,78 +15,125 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.collabtask.collabtask.api.entity.Team;
-import com.collabtask.collabtask.api.entity.TeamMember;
 import com.collabtask.collabtask.api.service.TeamService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/teams")
+@Tag(name = "Team Management", description = "Team CRUD operations - create, manage, and organize teams")
+@SecurityRequirement(name = "bearer-jwt")
 public class TeamController {
-
+    
     @Autowired
     private TeamService teamService;
-
-    // Get all teams - Any authenticated user
+    
+    @Operation(
+        summary = "Get all teams",
+        description = "Retrieves a complete list of all teams in the system. Accessible by all authenticated users."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved list of teams"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing JWT token")
+    })
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'MEMBER')")
     public List<Team> getAllTeams() {
         return teamService.getAllTeams();
     }
-
-    // Get team by ID - Any authenticated user
-    @GetMapping("/{id}")
-    public ResponseEntity<Team> getTeamById(@PathVariable Integer id) {
-        return teamService.getTeamById(id)
+    
+    @Operation(
+        summary = "Get team by ID",
+        description = "Retrieves detailed information about a specific team using its unique team ID"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved team details"),
+        @ApiResponse(responseCode = "404", description = "Team not found with the specified ID"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @GetMapping("/{teamId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'MEMBER')")
+    public ResponseEntity<Team> getTeamById(
+            @Parameter(description = "Unique ID of the team to retrieve", required = true, example = "1")
+            @PathVariable Integer teamId) {
+        return teamService.getTeamById(teamId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-
-    // Get teams by creator - Any authenticated user
+    
+    @Operation(
+        summary = "Get teams by creator",
+        description = "Retrieves all teams created by a specific user. Useful for viewing teams owned by a particular user."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved teams"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @GetMapping("/creator/{creatorId}")
-    public List<Team> getTeamsByCreator(@PathVariable Integer creatorId) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'MEMBER')")
+    public List<Team> getTeamsByCreator(
+            @Parameter(description = "User ID of the team creator", required = true, example = "1")
+            @PathVariable Integer creatorId) {
         return teamService.getTeamsByCreator(creatorId);
     }
-
-    // Create team - ADMIN only
-    @PreAuthorize("hasRole('ADMIN')")
+    
+    @Operation(
+        summary = "Create new team",
+        description = "Creates a new team with the provided details. Only ADMIN and MANAGER roles can create teams."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Team created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input - validation failed"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Requires ADMIN or MANAGER role")
+    })
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public Team createTeam(@RequestBody Team team) {
         return teamService.createTeam(team);
     }
-
-    // Update team - ADMIN only
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/{id}")
-    public ResponseEntity<Team> updateTeam(@PathVariable Integer id, @RequestBody Team teamDetails) {
-        Team updatedTeam = teamService.updateTeam(id, teamDetails);
+    
+    @Operation(
+        summary = "Update team",
+        description = "Updates an existing team's information such as name or description. Only ADMIN and MANAGER can update teams."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Team updated successfully"),
+        @ApiResponse(responseCode = "404", description = "Team not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Requires ADMIN or MANAGER role")
+    })
+    @PutMapping("/{teamId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<Team> updateTeam(
+            @Parameter(description = "ID of the team to update", required = true, example = "1")
+            @PathVariable Integer teamId,
+            @RequestBody Team teamDetails) {
+        Team updatedTeam = teamService.updateTeam(teamId, teamDetails);
         return ResponseEntity.ok(updatedTeam);
     }
-
-    // Delete team - ADMIN only
+    
+    @Operation(
+        summary = "Delete team",
+        description = "Permanently deletes a team from the system. Only ADMIN role can delete teams."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Team deleted successfully - No content returned"),
+        @ApiResponse(responseCode = "404", description = "Team not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Requires ADMIN role")
+    })
+    @DeleteMapping("/{teamId}")
     @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTeam(@PathVariable Integer id) {
-        teamService.deleteTeam(id);
+    public ResponseEntity<Void> deleteTeam(
+            @Parameter(description = "ID of the team to delete", required = true, example = "1")
+            @PathVariable Integer teamId) {
+        teamService.deleteTeam(teamId);
         return ResponseEntity.noContent().build();
-    }
-
-    // Add team member - ADMIN only
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/{teamId}/members/{userId}")
-    public ResponseEntity<TeamMember> addTeamMember(@PathVariable Integer teamId, @PathVariable Integer userId) {
-        TeamMember teamMember = teamService.addMemberToTeam(teamId, userId);
-        return ResponseEntity.ok(teamMember);
-    }
-
-    // Remove team member - ADMIN only
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{teamId}/members/{userId}")
-    public ResponseEntity<Void> removeTeamMember(@PathVariable Integer teamId, @PathVariable Integer userId) {
-        teamService.removeMemberFromTeam(teamId, userId);
-        return ResponseEntity.noContent().build();
-    }
-
-    // Get team members - Any authenticated user
-    @GetMapping("/{teamId}/members")
-    public List<TeamMember> getTeamMembers(@PathVariable Integer teamId) {
-        return teamService.getTeamMembers(teamId);
     }
 }

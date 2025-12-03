@@ -14,6 +14,9 @@ import org.springframework.web.context.request.WebRequest;
 
 import com.collabtask.collabtask.api.dto.ErrorResponse;
 
+import io.swagger.v3.oas.annotations.Hidden;  
+
+@Hidden  
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

@@ -21,10 +21,17 @@ import com.collabtask.collabtask.api.exception.InvalidCredentialsException;
 import com.collabtask.collabtask.api.repository.UserRepository;
 import com.collabtask.collabtask.api.security.JwtUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
+@Tag(name = "Authentication", description = "User registration and login endpoints")
 public class AuthController {
 
     @Autowired
@@ -36,7 +43,25 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    // Register new user
+    @Operation(
+        summary = "Register new user",
+        description = "Creates a new user account with the provided details. Password is encrypted using BCrypt."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User registered successfully",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid input - validation failed"
+        ),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Email already registered"
+        )
+    })
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         // Check if email already exists
@@ -70,7 +95,25 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Login user
+    @Operation(
+        summary = "User login",
+        description = "Authenticates user credentials and returns JWT token for accessing protected endpoints"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Login successful",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid input - validation failed"
+        ),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Invalid email or password"
+        )
+    })
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         // Find user by email

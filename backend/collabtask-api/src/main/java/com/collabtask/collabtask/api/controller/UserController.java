@@ -1,79 +1,101 @@
 package com.collabtask.collabtask.api.controller;
 
-import java.util.List;
-
+import com.collabtask.collabtask.api.entity.User;
+import com.collabtask.collabtask.api.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import com.collabtask.collabtask.api.entity.User;
-import com.collabtask.collabtask.api.service.UserService;
+import java.util.List;
 
 @RestController
 @RequestMapping("/users")
+@Tag(name = "User Management", description = "User CRUD operations and user-related endpoints")
+@SecurityRequirement(name = "bearer-jwt")
 public class UserController {
-
+    
     @Autowired
     private UserService userService;
-
-    // Get all users - ADMIN only
-    @PreAuthorize("hasRole('ADMIN')")
+    
+    @Operation(summary = "Get all users", description = "Retrieves a list of all registered users (ADMIN only)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved list of users"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing JWT token"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMIN role")
+    })
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public List<User> getAllUsers() {
         return userService.getAllUsers();
     }
-
-    // Get user by ID - Any authenticated user
-    @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Integer id) {
-        return userService.getUserById(id)
+    
+    @Operation(summary = "Get user by ID", description = "Retrieves a specific user by their user ID")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved user"),
+        @ApiResponse(responseCode = "404", description = "User not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @GetMapping("/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'MEMBER')")
+    public ResponseEntity<User> getUserById(
+            @Parameter(description = "ID of the user to retrieve", required = true)
+            @PathVariable Integer userId) {
+        return userService.getUserById(userId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-
-    // Get user by email - Any authenticated user
-    @GetMapping("/email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
-        return userService.getUserByEmail(email)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    // Get users by role - ADMIN only
-    @PreAuthorize("hasRole('ADMIN')")
+    
+    @Operation(summary = "Get users by role", description = "Retrieves all users with a specific role (ADMIN only)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved users"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Requires ADMIN role")
+    })
     @GetMapping("/role/{role}")
-    public List<User> getUsersByRole(@PathVariable String role) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<User> getUsersByRole(
+            @Parameter(description = "Role to filter by (ADMIN, MANAGER, MEMBER)", required = true)
+            @PathVariable String role) {
         return userService.getUsersByRole(role);
     }
-
-    // Create user - ADMIN only
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping
-    public User createUser(@RequestBody User user) {
-        return userService.createUser(user);
-    }
-
-    // Update user - ADMIN only
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Integer id, @RequestBody User userDetails) {
-        User updatedUser = userService.updateUser(id, userDetails);
+    
+    @Operation(summary = "Update user", description = "Updates an existing user's information (ADMIN and MANAGER only)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "User updated successfully"),
+        @ApiResponse(responseCode = "404", description = "User not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Requires ADMIN or MANAGER role")
+    })
+    @PutMapping("/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<User> updateUser(
+            @Parameter(description = "ID of the user to update", required = true)
+            @PathVariable Integer userId,
+            @RequestBody User userDetails) {
+        User updatedUser = userService.updateUser(userId, userDetails);
         return ResponseEntity.ok(updatedUser);
     }
-
-    // Delete user - ADMIN only
+    
+    @Operation(summary = "Delete user", description = "Deletes a user from the system (ADMIN only)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "User deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "User not found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Requires ADMIN role")
+    })
+    @DeleteMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Integer id) {
-        userService.deleteUser(id);
+    public ResponseEntity<Void> deleteUser(
+            @Parameter(description = "ID of the user to delete", required = true)
+            @PathVariable Integer userId) {
+        userService.deleteUser(userId);
         return ResponseEntity.noContent().build();
     }
 }

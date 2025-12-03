@@ -25,7 +25,12 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers(
+                    "/auth/**",              // Authentication endpoints
+                    "/v3/api-docs/**",       // OpenAPI documentation JSON
+                    "/swagger-ui/**",        // Swagger UI resources
+                    "/swagger-ui.html"       // Swagger UI main page
+                ).permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
