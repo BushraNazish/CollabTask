@@ -1,12 +1,15 @@
 package com.collabtask.collabtask.api.entity;
 
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -26,6 +29,7 @@ public class User {
     @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
     
+    @JsonIgnore // exclude password from serialized responses
     @Column(name = "password", nullable = false, length = 255)
     private String password;
     

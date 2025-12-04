@@ -62,19 +62,22 @@ CREATE TABLE projects (
 -- Table: tasks
 CREATE TABLE tasks (
     task_id INT AUTO_INCREMENT PRIMARY KEY,
-    task_name VARCHAR(200) NOT NULL,
+    title VARCHAR(200) NOT NULL,
     description TEXT,
     project_id INT NOT NULL,
     assigned_to INT,
-    status ENUM('TODO', 'IN_PROGRESS', 'IN_REVIEW', 'COMPLETED') DEFAULT 'TODO',
-    priority ENUM('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') DEFAULT 'MEDIUM',
+    created_by INT NOT NULL,
+    status ENUM('TO_DO', 'IN_PROGRESS', 'COMPLETED') DEFAULT 'TO_DO',
+    priority ENUM('LOW', 'MEDIUM', 'HIGH') DEFAULT 'MEDIUM',
     due_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE,
     FOREIGN KEY (assigned_to) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE,
     INDEX idx_project_id (project_id),
     INDEX idx_assigned_to (assigned_to),
+    INDEX idx_created_by (created_by),
     INDEX idx_status (status),
     INDEX idx_priority (priority)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
