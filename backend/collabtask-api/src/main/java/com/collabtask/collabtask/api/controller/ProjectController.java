@@ -33,6 +33,9 @@ public class ProjectController {
     @Autowired
     private ProjectService projectService;
     
+    @Autowired
+    private com.collabtask.collabtask.api.service.UserService userService;
+    
     @Operation(
         summary = "Get all projects",
         description = "Retrieves a complete list of all projects across all teams. Accessible by all authenticated users."
@@ -111,6 +114,10 @@ public class ProjectController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public Project createProject(@RequestBody Project project) {
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        com.collabtask.collabtask.api.entity.User currentUser = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+        project.setCreatedBy(currentUser);
         return projectService.createProject(project);
     }
     

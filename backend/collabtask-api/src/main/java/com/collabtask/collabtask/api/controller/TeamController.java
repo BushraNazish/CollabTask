@@ -33,6 +33,9 @@ public class TeamController {
     @Autowired
     private TeamService teamService;
     
+    @Autowired
+    private com.collabtask.collabtask.api.service.UserService userService;
+    
     @Operation(
         summary = "Get all teams",
         description = "Retrieves a complete list of all teams in the system. Accessible by all authenticated users."
@@ -95,6 +98,10 @@ public class TeamController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public Team createTeam(@RequestBody Team team) {
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        com.collabtask.collabtask.api.entity.User currentUser = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+        team.setCreatedBy(currentUser);
         return teamService.createTeam(team);
     }
     
