@@ -1,19 +1,31 @@
-import { useUsers } from "@/features/users/useUsers";
+import { useUsers, useUpdateUser, useDeleteUser } from "@/features/users/useUsers";
 import { useAuth } from "@/features/auth/AuthContext";
 import { normalizeError } from "@/services/errors";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatDate } from "@/types/date";
-
-
-import { Shield, ShieldAlert, User, Search, MoreHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
+import { Shield, ShieldAlert, User, Search, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import type { AppUser } from "@/features/users/types";
+import type { UserRole } from "@/features/auth/types";
 
 function UsersPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
   const { data, isLoading, isError, error } = useUsers();
+  const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
   const [search, setSearch] = useState("");
+
+  const [editingUser, setEditingUser] = useState<AppUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<AppUser | null>(null);
+
+  // Form state
+  // Pre-fill all fields to avoid null constraint issues
+  const [formData, setFormData] = useState({ name: "", email: "", role: "MEMBER" as UserRole });
 
   if (!isAdmin) {
     return (
@@ -22,7 +34,7 @@ function UsersPage() {
           <ShieldAlert className="h-8 w-8" />
         </div>
         <h2 className="mt-4 text-xl font-bold text-ink-900">Access Denied</h2>
-        <p className="mt-2 max-w-md text-ink-500">
+        <p className="mt-2 text-ink-500">
           You do not have permission to view this page. This section is restricted
           to administrators only.
         </p>
@@ -34,6 +46,39 @@ function UsersPage() {
     u.name.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleEditClick = (user: AppUser) => {
+    setEditingUser(user);
+    setFormData({ name: user.name, email: user.email, role: user.role });
+  };
+
+  const handleDeleteClick = (user: AppUser) => {
+    setDeletingUser(user);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingUser) return;
+    try {
+      await updateUser.mutateAsync({
+        userId: editingUser.userId,
+        // Send all fields to ensure no nulls are passed for existing data
+        data: { name: formData.name, email: formData.email, role: formData.role },
+      });
+      setEditingUser(null);
+    } catch (e) {
+      console.error("Failed to update user", e);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingUser) return;
+    try {
+      await deleteUser.mutateAsync(deletingUser.userId);
+      setDeletingUser(null);
+    } catch (e) {
+      console.error("Failed to delete user", e);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -52,10 +97,9 @@ function UsersPage() {
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-        <input
-          type="text"
+        <Input
           placeholder="Search users by name or email..."
-          className="h-10 w-full rounded-xl border border-surface-200 bg-white pl-10 pr-4 text-sm text-ink-900 transition focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          className="pl-10"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -130,9 +174,26 @@ function UsersPage() {
                       {u.createdAt ? formatDate(u.createdAt) : "—"}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="rounded-lg p-2 text-ink-400 hover:bg-white hover:text-ink-600 hover:shadow-sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditClick(u)}
+                          className="text-ink-400 hover:text-brand-600"
+                          title="Edit User"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteClick(u)}
+                          className="text-ink-400 hover:text-red-600"
+                          title="Delete User"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -147,6 +208,85 @@ function UsersPage() {
           </table>
         </div>
       )}
+
+      {/* Edit Modal */}
+      <Modal
+        open={!!editingUser}
+        onClose={() => setEditingUser(null)}
+        title="Edit User"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-ink-700">
+              Full Name
+            </label>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-ink-700">
+              Email
+            </label>
+            <Input
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-ink-700">
+              Role
+            </label>
+            <select
+              className="w-full rounded-xl border border-surface-200 bg-surface-50 p-2.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+            >
+              <option value="MEMBER">MEMBER</option>
+              <option value="MANAGER">MANAGER</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setEditingUser(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              loading={updateUser.isPending}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete/Details Modal - Using as Confirm Dialog */}
+      <Modal
+        open={!!deletingUser}
+        onClose={() => setDeletingUser(null)}
+        title="Delete User"
+      >
+        <div className="space-y-4">
+          <p className="text-ink-600">
+            Are you sure you want to delete <span className="font-bold">{deletingUser?.name}</span>?
+            This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setDeletingUser(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 shadow-red-500/20"
+              onClick={handleDelete}
+              loading={deleteUser.isPending}
+            >
+              Delete User
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

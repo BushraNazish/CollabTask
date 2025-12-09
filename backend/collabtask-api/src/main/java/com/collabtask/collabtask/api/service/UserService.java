@@ -47,9 +47,19 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         
         // Update fields
-        existingUser.setName(userDetails.getName());
-        existingUser.setEmail(userDetails.getEmail());
-        existingUser.setRole(userDetails.getRole());
+        // Update fields only if they are not null (Partial Update)
+        if (userDetails.getName() != null) {
+            existingUser.setName(userDetails.getName());
+        }
+        if (userDetails.getEmail() != null) {
+            existingUser.setEmail(userDetails.getEmail());
+        }
+        if (userDetails.getRole() != null) {
+            existingUser.setRole(userDetails.getRole());
+        }
+        if (userDetails.getPassword() != null) {
+            existingUser.setPassword(userDetails.getPassword());
+        }
         
         return userRepository.save(existingUser);
     }
