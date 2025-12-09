@@ -28,6 +28,7 @@ type AuthContextValue = {
   hydrated: boolean;
   setSession: (payload: { user: SessionUser; token: string }) => void;
   clearSession: () => void;
+  logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -80,6 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         persist({ user, token });
       },
       clearSession: () => {
+        setState({ user: null, token: null, hydrated: true });
+        persist(null);
+      },
+      logout: () => {
         setState({ user: null, token: null, hydrated: true });
         persist(null);
       },
