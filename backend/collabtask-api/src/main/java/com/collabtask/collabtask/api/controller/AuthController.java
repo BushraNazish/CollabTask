@@ -88,6 +88,7 @@ public class AuthController {
         AuthResponse response = new AuthResponse();
         response.setToken(token);
         response.setEmail(savedUser.getEmail());
+        response.setUserId(savedUser.getUserId());
         response.setName(savedUser.getName());
         response.setRole(savedUser.getRole().name());
         response.setMessage("User registered successfully");
@@ -132,6 +133,7 @@ public class AuthController {
         AuthResponse response = new AuthResponse();
         response.setToken(token);
         response.setEmail(user.getEmail());
+        response.setUserId(user.getUserId());
         response.setName(user.getName());
         response.setRole(user.getRole().name());
         response.setMessage("Login successful");

@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -64,6 +66,23 @@ public class UserController {
             @Parameter(description = "Role to filter by (ADMIN, MANAGER, MEMBER)", required = true)
             @PathVariable String role) {
         return userService.getUsersByRole(role);
+    }
+
+    @Operation(summary = "Get current user", description = "Returns the authenticated user's profile")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved current user"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'MEMBER')")
+    public ResponseEntity<User> getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return userService.getUserByEmail(authentication.getName())
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(401).build());
     }
     
     @Operation(summary = "Update user", description = "Updates an existing user's information (ADMIN and MANAGER only)")
