@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
 import { cn } from "@/lib/utils";
 import {
@@ -51,14 +51,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div className="flex h-full flex-col">
                     {/* Logo Area */}
                     <div className="flex h-16 items-center justify-between px-6 border-b border-surface-100">
-                        <div className="flex items-center gap-2">
+                        <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/20">
                                 <LayoutDashboard className="h-5 w-5" />
                             </div>
                             <span className="font-display text-xl font-bold tracking-tight text-ink-900">
                                 CollabTask
                             </span>
-                        </div>
+                        </Link>
                         <button
                             onClick={onClose}
                             className="rounded-lg p-1 text-ink-400 hover:bg-surface-100 lg:hidden"

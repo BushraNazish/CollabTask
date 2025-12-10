@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useAuth } from "@/features/auth/AuthContext";
 import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from "@/features/projects/useProjects";
+import { useTeams } from "@/features/teams/useTeams";
 import { normalizeError } from "@/services/errors";
 import { formatDate } from "@/types/date";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -51,7 +53,9 @@ const priorityColors = {
 };
 
 function ProjectsPage() {
+  const { user } = useAuth();
   const { data, isLoading, isError, error } = useProjects();
+  const { data: teams } = useTeams();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
@@ -95,19 +99,11 @@ function ProjectsPage() {
   }, [data, search, statusFilter, priorityFilter, teamFilter, dateFilter]);
 
   const teamOptions = useMemo(() => {
-    const ids = new Set<number>();
-    const list: { id: number; label: string }[] = [];
-    (data ?? []).forEach((p) => {
-      if (p.team?.teamId && !ids.has(p.team.teamId)) {
-        ids.add(p.team.teamId);
-        list.push({
-          id: p.team.teamId,
-          label: p.team.teamName || `Team #${p.team.teamId}`,
-        });
-      }
-    });
-    return list;
-  }, [data]);
+    return (teams ?? []).map((t) => ({
+      id: t.teamId,
+      label: t.teamName,
+    }));
+  }, [teams]);
 
   const handleConfigs = (project: Project) => {
     setActiveMenuId(null);
@@ -188,10 +184,28 @@ function ProjectsPage() {
               Manage and track all your team initiatives.
             </p>
           </div>
-          <Button onClick={() => setIsModalOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Project
-          </Button>
+          <div className="flex gap-2">
+            {user?.role !== "MEMBER" && (
+              <Button
+                onClick={() => {
+                  setEditingProject(null);
+                  form.reset({
+                    projectName: "",
+                    description: "",
+                    status: "PLANNING",
+                    priority: "MEDIUM",
+                    teamId: "",
+                    endDate: "",
+                  });
+                  setIsModalOpen(true);
+                }}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New Project
+              </Button>
+            )}
+          </div>
         </div>
 
 
@@ -461,12 +475,16 @@ function ProjectsPage() {
         <form className="space-y-4" onSubmit={handleCreateOrUpdate}>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">
-              Project Name
+              Project Name <span className="text-red-500">*</span>
             </label>
             <Input
-              {...form.register("projectName", { required: true })}
+              {...form.register("projectName", { required: "This field cannot be empty" })}
               placeholder="e.g. Website Redesign"
+              className={cn(form.formState.errors.projectName && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
             />
+            {form.formState.errors.projectName && (
+              <p className="text-xs text-red-500">{form.formState.errors.projectName.message}</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">
@@ -480,9 +498,9 @@ function ProjectsPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-semibold text-ink-800">
-                Status
+                Status <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("status")}>
+              <Select {...form.register("status", { required: "This field cannot be empty" })}>
                 <option value="PLANNING">Planning</option>
                 <option value="IN_PROGRESS">In Progress</option>
                 <option value="ON_HOLD">On Hold</option>
@@ -491,9 +509,9 @@ function ProjectsPage() {
             </div>
             <div className="space-y-1">
               <label className="text-sm font-semibold text-ink-800">
-                Priority
+                Priority <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("priority")}>
+              <Select {...form.register("priority", { required: "This field cannot be empty" })}>
                 <option value="HIGH">High</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="LOW">Low</option>
@@ -501,16 +519,22 @@ function ProjectsPage() {
             </div>
             <div className="space-y-1 sm:col-span-2">
               <label className="text-sm font-semibold text-ink-800">
-                Assign Team
+                Assign Team <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("teamId")}>
-                <option value="">No Team Assigned</option>
+              <Select
+                {...form.register("teamId", { required: "This field cannot be empty" })}
+                className={cn(form.formState.errors.teamId && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
+              >
+                <option value="">Select a team...</option>
                 {teamOptions.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.label}
                   </option>
                 ))}
               </Select>
+              {form.formState.errors.teamId && (
+                <p className="text-xs text-red-500">{form.formState.errors.teamId.message}</p>
+              )}
             </div>
 
             <div className="space-y-1 sm:col-span-2">

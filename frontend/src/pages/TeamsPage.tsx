@@ -96,7 +96,18 @@ function TeamsPage() {
             Collaborate and organize your people into groups.
           </p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="gap-2">
+        <Button
+          onClick={() => {
+            setEditingTeam(null);
+            form.reset({
+              teamName: "",
+              description: "",
+              status: "ACTIVE",
+            });
+            setIsModalOpen(true);
+          }}
+          className="gap-2"
+        >
           <Plus className="h-4 w-4" />
           New Team
         </Button>
@@ -249,12 +260,16 @@ function TeamsPage() {
         <form className="space-y-4" onSubmit={handleCreateOrUpdate}>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">
-              Team Name
+              Team Name <span className="text-red-500">*</span>
             </label>
             <Input
-              {...form.register("teamName", { required: true })}
+              {...form.register("teamName", { required: "This field cannot be empty" })}
               placeholder="e.g. Engineering"
+              className={cn(form.formState.errors.teamName && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
             />
+            {form.formState.errors.teamName && (
+              <p className="text-xs text-red-500">{form.formState.errors.teamName.message}</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">

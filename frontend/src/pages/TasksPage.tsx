@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/features/tasks/useTasks";
+import { useProjects } from "@/features/projects/useProjects";
 import { useUsers } from "@/features/users/useUsers";
+import { useAuth } from "@/features/auth/AuthContext";
 import { type Task } from "@/features/tasks/types";
 import { normalizeError } from "@/services/errors";
 import { formatDate } from "@/types/date";
@@ -58,7 +60,9 @@ const statusColors = {
 };
 
 function TasksPage() {
+  const { user } = useAuth();
   const { data, isLoading, isError, error } = useTasks();
+  const { data: projects } = useProjects();
   const { data: users } = useUsers();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
@@ -89,19 +93,11 @@ function TasksPage() {
   });
 
   const projectOptions = useMemo(() => {
-    const ids = new Set<number>();
-    const list: { id: number; label: string }[] = [];
-    (data ?? []).forEach((t) => {
-      if (t.project?.projectId && !ids.has(t.project.projectId)) {
-        ids.add(t.project.projectId);
-        list.push({
-          id: t.project.projectId,
-          label: t.project.projectName || `Project #${t.project.projectId}`,
-        });
-      }
-    });
-    return list;
-  }, [data]);
+    return (projects ?? []).map((p) => ({
+      id: p.projectId,
+      label: p.projectName,
+    }));
+  }, [projects]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -202,10 +198,27 @@ function TasksPage() {
               Track your daily to-dos and project items.
             </p>
           </div>
-          <Button onClick={() => setIsModalOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Task
-          </Button>
+          {user?.role !== "MEMBER" && (
+            <Button
+              onClick={() => {
+                setEditingTask(null);
+                form.reset({
+                  title: "",
+                  description: "",
+                  status: "TO_DO",
+                  priority: "MEDIUM",
+                  projectId: "",
+                  assigneeId: "",
+                  dueDate: "",
+                });
+                setIsModalOpen(true);
+              }}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              New Task
+            </Button>
+          )}
         </div>
 
         {/* Professional Filter Bar */}
@@ -452,12 +465,16 @@ function TasksPage() {
         <form className="space-y-4" onSubmit={handleCreateOrUpdate}>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">
-              Title
+              Title <span className="text-red-500">*</span>
             </label>
             <Input
-              {...form.register("title", { required: true })}
+              {...form.register("title", { required: "This field cannot be empty" })}
               placeholder="e.g. Update documentation"
+              className={cn(form.formState.errors.title && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
             />
+            {form.formState.errors.title && (
+              <p className="text-xs text-red-500">{form.formState.errors.title.message}</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">
@@ -471,22 +488,28 @@ function TasksPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-semibold text-ink-800">
-                Project
+                Project <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("projectId")}>
-                <option value="">No Project</option>
+              <Select
+                {...form.register("projectId", { required: "This field cannot be empty" })}
+                className={cn(form.formState.errors.projectId && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
+              >
+                <option value="">Select a project...</option>
                 {projectOptions.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.label}
                   </option>
                 ))}
               </Select>
+              {form.formState.errors.projectId && (
+                <p className="text-xs text-red-500">{form.formState.errors.projectId.message}</p>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-semibold text-ink-800">
-                Priority
+                Priority <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("priority")}>
+              <Select {...form.register("priority", { required: "This field cannot be empty" })}>
                 <option value="CRITICAL">Critical</option>
                 <option value="HIGH">High</option>
                 <option value="MEDIUM">Medium</option>
@@ -501,9 +524,9 @@ function TasksPage() {
             </div>
             <div className="space-y-1">
               <label className="text-sm font-semibold text-ink-800">
-                Status
+                Status <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("status")}>
+              <Select {...form.register("status", { required: "This field cannot be empty" })}>
                 <option value="TO_DO">To Do</option>
                 <option value="IN_PROGRESS">In Progress</option>
                 <option value="COMPLETED">Completed</option>

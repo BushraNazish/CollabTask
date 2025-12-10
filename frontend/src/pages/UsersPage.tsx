@@ -6,6 +6,7 @@ import { formatDate } from "@/types/date";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { useForm } from "react-hook-form";
 import { Shield, ShieldAlert, User, Search, Pencil, Trash2, Calendar, X, ChevronDown, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -33,8 +34,14 @@ function UsersPage() {
   const [deletingUser, setDeletingUser] = useState<AppUser | null>(null);
 
   // Form state
-  // Pre-fill all fields to avoid null constraint issues
-  const [formData, setFormData] = useState({ name: "", email: "", role: "MEMBER" as UserRole });
+  // Form state
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      email: "",
+      role: "MEMBER" as UserRole,
+    },
+  });
 
   if (!isAdmin) {
     return (
@@ -61,26 +68,29 @@ function UsersPage() {
 
   const handleEditClick = (user: AppUser) => {
     setEditingUser(user);
-    setFormData({ name: user.name, email: user.email, role: user.role });
+    form.reset({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
   };
 
   const handleDeleteClick = (user: AppUser) => {
     setDeletingUser(user);
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = form.handleSubmit(async (values) => {
     if (!editingUser) return;
     try {
       await updateUser.mutateAsync({
         userId: editingUser.userId,
-        // Send all fields to ensure no nulls are passed for existing data
-        data: { name: formData.name, email: formData.email, role: formData.role },
+        data: values,
       });
       setEditingUser(null);
     } catch (e) {
       console.error("Failed to update user", e);
     }
-  };
+  });
 
   const handleDelete = async () => {
     if (!deletingUser) return;
@@ -284,33 +294,44 @@ function UsersPage() {
         onClose={() => setEditingUser(null)}
         title="Edit User"
       >
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-ink-700">
-              Full Name
+        <form className="space-y-4" onSubmit={handleUpdate}>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-ink-800">
+              Full Name <span className="text-red-500">*</span>
             </label>
             <Input
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              {...form.register("name", { required: "This field cannot be empty" })}
+              className={cn(form.formState.errors.name && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
             />
+            {form.formState.errors.name && (
+              <p className="text-xs text-red-500">{form.formState.errors.name.message}</p>
+            )}
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-ink-700">
-              Email
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-ink-800">
+              Email <span className="text-red-500">*</span>
             </label>
             <Input
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              {...form.register("email", {
+                required: "This field cannot be empty",
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: "Invalid email address"
+                }
+              })}
+              className={cn(form.formState.errors.email && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
             />
+            {form.formState.errors.email && (
+              <p className="text-xs text-red-500">{form.formState.errors.email.message}</p>
+            )}
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-ink-700">
-              Role
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-ink-800">
+              Role <span className="text-red-500">*</span>
             </label>
             <select
               className="w-full rounded-xl border border-surface-200 bg-surface-50 p-2.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+              {...form.register("role", { required: "This field cannot be empty" })}
             >
               <option value="MEMBER">MEMBER</option>
               <option value="MANAGER">MANAGER</option>
@@ -318,17 +339,17 @@ function UsersPage() {
             </select>
           </div>
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="secondary" onClick={() => setEditingUser(null)}>
+            <Button variant="secondary" onClick={() => setEditingUser(null)} type="button">
               Cancel
             </Button>
             <Button
-              onClick={handleUpdate}
+              type="submit"
               loading={updateUser.isPending}
             >
               Save Changes
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
 
       {/* Delete/Details Modal - Using as Confirm Dialog */}

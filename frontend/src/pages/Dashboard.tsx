@@ -72,13 +72,15 @@ function Dashboard() {
             tasks pending for today. Let's get to work.
           </p>
         </div>
-        <Button
-          onClick={() => setIsProjectModalOpen(true)}
-          className="bg-white text-brand-900 hover:bg-brand-50 border-transparent shadow-lg transition-transform hover:scale-105"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          New Project
-        </Button>
+        {user?.role !== "MEMBER" && (
+          <Button
+            onClick={() => setIsProjectModalOpen(true)}
+            className="bg-white text-brand-900 hover:bg-brand-50 border-transparent shadow-lg transition-transform hover:scale-105"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Project
+          </Button>
+        )}
       </div>
 
       {/* Stats Grid */}
