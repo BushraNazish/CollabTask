@@ -75,7 +75,7 @@ function Register() {
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="space-y-2">
           <label className="text-sm font-medium text-ink-800" htmlFor="name">
-            Name
+            Name <span className="text-red-500">*</span>
           </label>
           <input
             id="name"
@@ -92,7 +92,7 @@ function Register() {
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-ink-800" htmlFor="email">
-            Email
+            Email <span className="text-red-500">*</span>
           </label>
           <input
             id="email"
@@ -112,7 +112,7 @@ function Register() {
             className="text-sm font-medium text-ink-800"
             htmlFor="password"
           >
-            Password
+            Password <span className="text-red-500">*</span>
           </label>
           <input
             id="password"
@@ -129,7 +129,7 @@ function Register() {
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-ink-800" htmlFor="role">
-            Role
+            Role <span className="text-red-500">*</span>
           </label>
           <select
             id="role"
