@@ -16,17 +16,16 @@ import {
   Search,
   Calendar,
   MoreVertical,
-  Filter,
 
   Users,
   Edit2,
   Trash2,
   Circle,
   Flag,
-  ChevronDown,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { type Project } from "@/features/projects/types";
 
 type CreateProjectForm = {
@@ -61,9 +60,9 @@ function ProjectsPage() {
   const deleteProject = useDeleteProject();
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
-  const [teamFilter, setTeamFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [teamFilter, setTeamFilter] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,9 +88,9 @@ function ProjectsPage() {
         .toLowerCase()
         .includes(search.toLowerCase());
       const matchesStatus =
-        statusFilter === "ALL" || project.status === statusFilter;
-      const matchesPriority = priorityFilter === "ALL" || project.priority === priorityFilter;
-      const matchesTeam = teamFilter === "ALL" || project.team?.teamId.toString() === teamFilter;
+        statusFilter.length === 0 || statusFilter.includes(project.status);
+      const matchesPriority = priorityFilter.length === 0 || priorityFilter.includes(project.priority);
+      const matchesTeam = teamFilter.length === 0 || (project.team?.teamId && teamFilter.includes(project.team.teamId.toString()));
       const matchesDate = !dateFilter || project.endDate === dateFilter;
 
       return matchesSearch && matchesStatus && matchesPriority && matchesTeam && matchesDate;
@@ -100,7 +99,7 @@ function ProjectsPage() {
 
   const teamOptions = useMemo(() => {
     return (teams ?? []).map((t) => ({
-      id: t.teamId,
+      id: t.teamId.toString(),
       label: t.teamName,
     }));
   }, [teams]);
@@ -236,9 +235,9 @@ function ProjectsPage() {
               <button
                 onClick={() => {
                   setSearch("");
-                  setStatusFilter("ALL");
-                  setPriorityFilter("ALL");
-                  setTeamFilter("ALL");
+                  setStatusFilter([]);
+                  setPriorityFilter([]);
+                  setTeamFilter([]);
                   setDateFilter("");
                 }}
                 className="group flex items-center gap-2 rounded-xl border border-dashed border-surface-300 px-4 py-2 text-sm font-medium text-ink-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 active:scale-95"
@@ -253,65 +252,41 @@ function ProjectsPage() {
             {/* Bottom Row: Filters */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {/* Status Filter */}
-              <div className="relative">
-                <Circle className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", statusFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    statusFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="ALL">All Status</option>
-                  <option value="PLANNING">Planning</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="ON_HOLD">On Hold</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Status"
+                options={[
+                  { id: "PLANNING", label: "Planning" },
+                  { id: "IN_PROGRESS", label: "In Progress" },
+                  { id: "ON_HOLD", label: "On Hold" },
+                  { id: "COMPLETED", label: "Completed" },
+                ]}
+                selectedValues={statusFilter}
+                onChange={setStatusFilter}
+                icon={<Circle className={cn("h-4 w-4", statusFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Priority Filter */}
-              <div className="relative">
-                <Flag className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", priorityFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    priorityFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                >
-                  <option value="ALL">All Priorities</option>
-                  <option value="CRITICAL">Critical</option>
-                  <option value="HIGH">High</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="LOW">Low</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Priorities"
+                options={[
+                  { id: "CRITICAL", label: "Critical" },
+                  { id: "HIGH", label: "High" },
+                  { id: "MEDIUM", label: "Medium" },
+                  { id: "LOW", label: "Low" },
+                ]}
+                selectedValues={priorityFilter}
+                onChange={setPriorityFilter}
+                icon={<Flag className={cn("h-4 w-4", priorityFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Team Filter */}
-              <div className="relative">
-                <Users className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", teamFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    teamFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={teamFilter}
-                  onChange={(e) => setTeamFilter(e.target.value)}
-                >
-                  <option value="ALL">All Teams</option>
-                  {teamOptions.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Teams"
+                options={teamOptions}
+                selectedValues={teamFilter}
+                onChange={setTeamFilter}
+                icon={<Users className={cn("h-4 w-4", teamFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Date Filter */}
               <div className="relative">

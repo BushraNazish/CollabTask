@@ -1,3 +1,4 @@
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { useUsers, useUpdateUser, useDeleteUser } from "@/features/users/useUsers";
 import { useAuth } from "@/features/auth/AuthContext";
 import { normalizeError } from "@/services/errors";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { useForm } from "react-hook-form";
-import { Shield, User, Search, Pencil, Trash2, Calendar, X, ChevronDown, Briefcase } from "lucide-react";
+import { Shield, User, Search, Pencil, Trash2, Calendar, X, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { AppUser } from "@/features/users/types";
@@ -27,7 +28,7 @@ function UsersPage() {
   const deleteUser = useDeleteUser();
 
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>("");
 
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
@@ -61,7 +62,7 @@ function UsersPage() {
   const filtered = data?.filter((u) => {
     const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter === "ALL" || u.role === roleFilter;
+    const matchesRole = roleFilter.length === 0 || roleFilter.includes(u.role);
     const matchesDate = !dateFilter || (u.createdAt && u.createdAt.startsWith(dateFilter));
     return matchesSearch && matchesRole && matchesDate;
   });
@@ -134,7 +135,7 @@ function UsersPage() {
             <button
               onClick={() => {
                 setSearch("");
-                setRoleFilter("ALL");
+                setRoleFilter([]);
                 setDateFilter("");
               }}
               className="group flex items-center gap-2 rounded-xl border border-dashed border-surface-300 px-4 py-2 text-sm font-medium text-ink-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 active:scale-95"
@@ -149,23 +150,17 @@ function UsersPage() {
           {/* Bottom Row: Filters */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {/* Role Filter */}
-            <div className="relative">
-              <Shield className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", roleFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-              <select
-                className={cn(
-                  "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                  roleFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                )}
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-              >
-                <option value="ALL">All Roles</option>
-                <option value="ADMIN">Admin</option>
-                <option value="MANAGER">Manager</option>
-                <option value="MEMBER">Member</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-            </div>
+            <MultiSelect
+              label="All Roles"
+              options={[
+                { id: "ADMIN", label: "Admin" },
+                { id: "MANAGER", label: "Manager" },
+                { id: "MEMBER", label: "Member" },
+              ]}
+              selectedValues={roleFilter}
+              onChange={setRoleFilter}
+              icon={<Shield className={cn("h-4 w-4", roleFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+            />
 
             {/* Date Filter */}
             <div className="relative">

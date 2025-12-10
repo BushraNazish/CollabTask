@@ -4,6 +4,7 @@ import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/feature
 import { useProjects } from "@/features/projects/useProjects";
 import { useUsers } from "@/features/users/useUsers";
 import { useAuth } from "@/features/auth/AuthContext";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { type Task } from "@/features/tasks/types";
 import { normalizeError } from "@/services/errors";
 import { formatDate } from "@/types/date";
@@ -17,14 +18,12 @@ import {
   Plus,
   Search,
   Calendar,
-  Filter,
   Circle,
   Clock,
   CheckCircle2,
   Info,
   User,
   X,
-  ChevronDown,
   Flag,
   Briefcase,
 } from "lucide-react";
@@ -69,10 +68,10 @@ function TasksPage() {
   const deleteTask = useDeleteTask();
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
-  const [projectFilter, setProjectFilter] = useState<string>("ALL");
-  const [assigneeFilter, setAssigneeFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [projectFilter, setProjectFilter] = useState<string[]>([]);
+  const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -94,22 +93,29 @@ function TasksPage() {
 
   const projectOptions = useMemo(() => {
     return (projects ?? []).map((p) => ({
-      id: p.projectId,
+      id: p.projectId.toString(),
       label: p.projectName,
     }));
   }, [projects]);
+
+  const assigneeOptions = useMemo(() => {
+    return (users ?? []).map((user) => ({
+      id: user.userId.toString(),
+      label: user.name,
+    }));
+  }, [users]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
     return data.filter((task) => {
       const matchesSearch = task.title.toLowerCase().includes(search.toLowerCase());
       const matchesStatus =
-        statusFilter === "ALL" || task.status === statusFilter;
-      const matchesPriority = priorityFilter === "ALL" || task.priority === priorityFilter;
-      const matchesProject = projectFilter === "ALL" || task.project?.projectId?.toString() === projectFilter;
-      const matchesAssignee = assigneeFilter === "ALL" ||
-        ((task.assignedTo as any)?.userId?.toString() === assigneeFilter) ||
-        (task.assignedTo?.id?.toString() === assigneeFilter);
+        statusFilter.length === 0 || statusFilter.includes(task.status);
+      const matchesPriority = priorityFilter.length === 0 || priorityFilter.includes(task.priority);
+      const matchesProject = projectFilter.length === 0 || (task.project?.projectId && projectFilter.includes(task.project.projectId.toString()));
+      const matchesAssignee = assigneeFilter.length === 0 ||
+        ((task.assignedTo as any)?.userId && assigneeFilter.includes((task.assignedTo as any).userId.toString())) ||
+        (task.assignedTo?.id && assigneeFilter.includes(task.assignedTo.id.toString()));
       const matchesDate = !dateFilter || task.dueDate === dateFilter;
 
       return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesAssignee && matchesDate;
@@ -239,10 +245,10 @@ function TasksPage() {
               <button
                 onClick={() => {
                   setSearch("");
-                  setStatusFilter("ALL");
-                  setPriorityFilter("ALL");
-                  setProjectFilter("ALL");
-                  setAssigneeFilter("ALL");
+                  setStatusFilter([]);
+                  setPriorityFilter([]);
+                  setProjectFilter([]);
+                  setAssigneeFilter([]);
                   setDateFilter("");
                 }}
                 className="group flex items-center gap-2 rounded-xl border border-dashed border-surface-300 px-4 py-2 text-sm font-medium text-ink-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 active:scale-95"
@@ -257,85 +263,49 @@ function TasksPage() {
             {/* Bottom Row: Filters */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {/* Status Filter */}
-              <div className="relative">
-                <Circle className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", statusFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    statusFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="ALL">All Status</option>
-                  <option value="TO_DO">To Do</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Status"
+                options={[
+                  { id: "TO_DO", label: "To Do" },
+                  { id: "IN_PROGRESS", label: "In Progress" },
+                  { id: "COMPLETED", label: "Completed" },
+                ]}
+                selectedValues={statusFilter}
+                onChange={setStatusFilter}
+                icon={<Circle className={cn("h-4 w-4", statusFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Priority Filter */}
-              <div className="relative">
-                <Flag className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", priorityFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    priorityFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                >
-                  <option value="ALL">All Priorities</option>
-                  <option value="CRITICAL">Critical</option>
-                  <option value="HIGH">High</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="LOW">Low</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Priorities"
+                options={[
+                  { id: "CRITICAL", label: "Critical" },
+                  { id: "HIGH", label: "High" },
+                  { id: "MEDIUM", label: "Medium" },
+                  { id: "LOW", label: "Low" },
+                ]}
+                selectedValues={priorityFilter}
+                onChange={setPriorityFilter}
+                icon={<Flag className={cn("h-4 w-4", priorityFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Project Filter */}
-              <div className="relative">
-                <Briefcase className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", projectFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    projectFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={projectFilter}
-                  onChange={(e) => setProjectFilter(e.target.value)}
-                >
-                  <option value="ALL">All Projects</option>
-                  {projectOptions.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Projects"
+                options={projectOptions}
+                selectedValues={projectFilter}
+                onChange={setProjectFilter}
+                icon={<Briefcase className={cn("h-4 w-4", projectFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Assignee Filter */}
-              <div className="relative">
-                <User className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", assigneeFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    assigneeFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={assigneeFilter}
-                  onChange={(e) => setAssigneeFilter(e.target.value)}
-                >
-                  <option value="ALL">All Assignees</option>
-                  {users?.map((user) => (
-                    <option key={user.userId} value={user.userId}>
-                      {user.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Assignees"
+                options={assigneeOptions}
+                selectedValues={assigneeFilter}
+                onChange={setAssigneeFilter}
+                icon={<User className={cn("h-4 w-4", assigneeFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Date Filter */}
               <div className="relative">
