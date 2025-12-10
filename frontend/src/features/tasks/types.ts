@@ -2,7 +2,7 @@ import { type Project } from "@/features/projects/types";
 import { type SessionUser } from "@/features/auth/types";
 
 export type TaskStatus = "TO_DO" | "IN_PROGRESS" | "COMPLETED";
-export type TaskPriority = "HIGH" | "MEDIUM" | "LOW";
+export type TaskPriority = "HIGH" | "MEDIUM" | "LOW" | "CRITICAL";
 
 export type Task = {
   taskId: number;

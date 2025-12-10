@@ -6,11 +6,17 @@ import { formatDate } from "@/types/date";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
-import { Shield, ShieldAlert, User, Search, Pencil, Trash2 } from "lucide-react";
+import { Shield, ShieldAlert, User, Search, Pencil, Trash2, Calendar, X, ChevronDown, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { AppUser } from "@/features/users/types";
 import type { UserRole } from "@/features/auth/types";
+
+const roleStyles = {
+  ADMIN: "bg-purple-50 text-purple-700 border-purple-200",
+  MANAGER: "bg-blue-50 text-blue-700 border-blue-200",
+  MEMBER: "bg-slate-50 text-slate-700 border-slate-200",
+};
 
 function UsersPage() {
   const { user } = useAuth();
@@ -18,7 +24,10 @@ function UsersPage() {
   const { data, isLoading, isError, error } = useUsers();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
+
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [dateFilter, setDateFilter] = useState<string>("");
 
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AppUser | null>(null);
@@ -42,10 +51,13 @@ function UsersPage() {
     );
   }
 
-  const filtered = data?.filter((u) =>
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = data?.filter((u) => {
+    const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase());
+    const matchesRole = roleFilter === "ALL" || u.role === roleFilter;
+    const matchesDate = !dateFilter || (u.createdAt && u.createdAt.startsWith(dateFilter));
+    return matchesSearch && matchesRole && matchesDate;
+  });
 
   const handleEditClick = (user: AppUser) => {
     setEditingUser(user);
@@ -94,15 +106,72 @@ function UsersPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-        <Input
-          placeholder="Search users by name or email..."
-          className="pl-10"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* Professional Filter Bar */}
+      <div className="rounded-2xl border border-surface-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-5">
+          {/* Top Row: Search & Reset */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+              <input
+                type="text"
+                placeholder="Search users by name or email..."
+                className="h-10 w-full rounded-xl border border-surface-200 bg-surface-50 pl-10 pr-4 text-sm text-ink-900 transition-all hover:bg-surface-100 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <button
+              onClick={() => {
+                setSearch("");
+                setRoleFilter("ALL");
+                setDateFilter("");
+              }}
+              className="group flex items-center gap-2 rounded-xl border border-dashed border-surface-300 px-4 py-2 text-sm font-medium text-ink-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 active:scale-95"
+            >
+              <X className="h-4 w-4 transition-transform group-hover:rotate-90" />
+              Reset Filters
+            </button>
+          </div>
+
+          <div className="h-px bg-surface-100" />
+
+          {/* Bottom Row: Filters */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Role Filter */}
+            <div className="relative">
+              <Shield className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", roleFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
+              <select
+                className={cn(
+                  "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
+                  roleFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
+                )}
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+              >
+                <option value="ALL">All Roles</option>
+                <option value="ADMIN">Admin</option>
+                <option value="MANAGER">Manager</option>
+                <option value="MEMBER">Member</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
+            </div>
+
+            {/* Date Filter */}
+            <div className="relative">
+              <Calendar className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", dateFilter ? "text-brand-500" : "text-ink-400")} />
+              <input
+                type="date"
+                className={cn(
+                  "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-4 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
+                  dateFilter && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
+                )}
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {isLoading ? (
@@ -160,13 +229,13 @@ function UsersPage() {
                     <td className="px-6 py-4">
                       <span
                         className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
-                          u.role === "ADMIN"
-                            ? "bg-purple-50 text-purple-700 border border-purple-200"
-                            : "bg-surface-100 text-ink-600 border border-surface-200"
+                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border",
+                          roleStyles[u.role]
                         )}
                       >
                         {u.role === "ADMIN" && <Shield className="h-3 w-3" />}
+                        {u.role === "MANAGER" && <Briefcase className="h-3 w-3" />}
+                        {u.role === "MEMBER" && <User className="h-3 w-3" />}
                         {u.role}
                       </span>
                     </td>

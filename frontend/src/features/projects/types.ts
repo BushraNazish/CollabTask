@@ -6,7 +6,7 @@ export type ProjectStatus =
   | "ON_HOLD"
   | "COMPLETED";
 
-export type ProjectPriority = "HIGH" | "MEDIUM" | "LOW";
+export type ProjectPriority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
 export type Team = {
   teamId: number;

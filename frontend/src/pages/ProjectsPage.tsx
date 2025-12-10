@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useProjects, useCreateProject } from "@/features/projects/useProjects";
+import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from "@/features/projects/useProjects";
 import { normalizeError } from "@/services/errors";
 import { formatDate } from "@/types/date";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -15,9 +15,17 @@ import {
   Calendar,
   MoreVertical,
   Filter,
+
   Users,
+  Edit2,
+  Trash2,
+  Circle,
+  Flag,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { type Project } from "@/features/projects/types";
 
 type CreateProjectForm = {
   projectName: string;
@@ -25,6 +33,7 @@ type CreateProjectForm = {
   status: "PLANNING" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED";
   priority: "HIGH" | "MEDIUM" | "LOW";
   teamId: string;
+  endDate?: string;
 };
 
 const statusColors = {
@@ -35,18 +44,27 @@ const statusColors = {
 };
 
 const priorityColors = {
-  HIGH: "text-red-600 bg-red-50 border-red-100",
-  MEDIUM: "text-amber-600 bg-amber-50 border-amber-100",
-  LOW: "text-slate-600 bg-slate-50 border-slate-100",
+  CRITICAL: "text-red-700 bg-red-50 border-red-200",
+  HIGH: "text-orange-700 bg-orange-50 border-orange-200",
+  MEDIUM: "text-blue-700 bg-blue-50 border-blue-200",
+  LOW: "text-slate-600 bg-slate-50 border-slate-200",
 };
 
 function ProjectsPage() {
   const { data, isLoading, isError, error } = useProjects();
   const createProject = useCreateProject();
+  const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
+  const [teamFilter, setTeamFilter] = useState<string>("ALL");
+  const [dateFilter, setDateFilter] = useState<string>("");
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   const form = useForm<CreateProjectForm>({
     defaultValues: {
@@ -55,6 +73,7 @@ function ProjectsPage() {
       status: "PLANNING",
       priority: "MEDIUM",
       teamId: "",
+      endDate: "",
     },
   });
 
@@ -66,9 +85,13 @@ function ProjectsPage() {
         .includes(search.toLowerCase());
       const matchesStatus =
         statusFilter === "ALL" || project.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesPriority = priorityFilter === "ALL" || project.priority === priorityFilter;
+      const matchesTeam = teamFilter === "ALL" || project.team?.teamId.toString() === teamFilter;
+      const matchesDate = !dateFilter || project.endDate === dateFilter;
+
+      return matchesSearch && matchesStatus && matchesPriority && matchesTeam && matchesDate;
     });
-  }, [data, search, statusFilter]);
+  }, [data, search, statusFilter, priorityFilter, teamFilter, dateFilter]);
 
   const teamOptions = useMemo(() => {
     const ids = new Set<number>();
@@ -85,16 +108,65 @@ function ProjectsPage() {
     return list;
   }, [data]);
 
-  const handleCreate = form.handleSubmit(async (values) => {
-    await createProject.mutateAsync({
-      projectName: values.projectName,
-      description: values.description,
-      status: values.status,
-      priority: values.priority,
-      team: values.teamId ? { teamId: Number(values.teamId) } : undefined,
-    });
+  const handleConfigs = (project: Project) => {
+    setActiveMenuId(null);
+    setEditingProject(project);
+    form.setValue("projectName", project.projectName);
+    form.setValue("description", project.description || "");
+    form.setValue("status", project.status);
+    form.setValue("priority", (project.priority as "HIGH" | "MEDIUM" | "LOW") || "MEDIUM");
+    form.setValue("teamId", project.team?.teamId?.toString() || "");
+    const formattedDate = project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "";
+    form.setValue("endDate", formattedDate);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
     setIsModalOpen(false);
-    form.reset();
+    setEditingProject(null);
+    form.reset({
+      projectName: "",
+      description: "",
+      status: "PLANNING",
+      priority: "MEDIUM",
+      teamId: "",
+      endDate: "",
+    });
+  };
+
+  const handleDelete = async (projectId: number) => {
+    if (window.confirm("Are you sure you want to delete this project?")) {
+      await deleteProject.mutateAsync(projectId);
+      setActiveMenuId(null);
+    }
+  };
+
+  const handleCreateOrUpdate = form.handleSubmit(async (values) => {
+    try {
+      if (editingProject) {
+        await updateProject.mutateAsync({
+          projectId: editingProject.projectId,
+          projectName: values.projectName,
+          description: values.description,
+          status: values.status,
+          priority: values.priority,
+          team: values.teamId ? { teamId: Number(values.teamId) } : undefined,
+          endDate: values.endDate ? new Date(values.endDate).toISOString() : undefined,
+        });
+      } else {
+        await createProject.mutateAsync({
+          projectName: values.projectName,
+          description: values.description,
+          status: values.status,
+          priority: values.priority,
+          team: values.teamId ? { teamId: Number(values.teamId) } : undefined,
+          endDate: values.endDate ? new Date(values.endDate).toISOString() : undefined,
+        });
+      }
+      closeModal();
+    } catch (e) {
+      console.error(e);
+    }
   });
 
   return (
@@ -116,31 +188,125 @@ function ProjectsPage() {
           </Button>
         </div>
 
-        {/* Search & Filters */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-            <input
-              type="text"
-              placeholder="Search projects..."
-              className="h-10 w-full rounded-xl border border-surface-200 bg-white pl-10 pr-4 text-sm text-ink-900 transition focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-ink-400" />
-            <select
-              className="h-10 rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm text-ink-700 outline-none focus:border-brand-500"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="ALL">All Status</option>
-              <option value="PLANNING">Planning</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="ON_HOLD">On Hold</option>
-              <option value="COMPLETED">Completed</option>
-            </select>
+
+
+        {/* Overlay to close menus */}
+        {activeMenuId !== null && (
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setActiveMenuId(null)}
+          />
+        )}
+
+        {/* Professional Filter Bar */}
+        <div className="rounded-2xl border border-surface-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-5">
+            {/* Top Row: Search & Reset */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+                <input
+                  type="text"
+                  placeholder="Search projects..."
+                  className="h-10 w-full rounded-xl border border-surface-200 bg-surface-50 pl-10 pr-4 text-sm text-ink-900 transition-all hover:bg-surface-100 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("ALL");
+                  setPriorityFilter("ALL");
+                  setTeamFilter("ALL");
+                  setDateFilter("");
+                }}
+                className="group flex items-center gap-2 rounded-xl border border-dashed border-surface-300 px-4 py-2 text-sm font-medium text-ink-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 active:scale-95"
+              >
+                <X className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                Reset Filters
+              </button>
+            </div>
+
+            <div className="h-px bg-surface-100" />
+
+            {/* Bottom Row: Filters */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Status Filter */}
+              <div className="relative">
+                <Circle className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", statusFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
+                <select
+                  className={cn(
+                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
+                    statusFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
+                  )}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="ALL">All Status</option>
+                  <option value="PLANNING">Planning</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="ON_HOLD">On Hold</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
+              </div>
+
+              {/* Priority Filter */}
+              <div className="relative">
+                <Flag className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", priorityFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
+                <select
+                  className={cn(
+                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
+                    priorityFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
+                  )}
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                >
+                  <option value="ALL">All Priorities</option>
+                  <option value="CRITICAL">Critical</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
+              </div>
+
+              {/* Team Filter */}
+              <div className="relative">
+                <Users className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", teamFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
+                <select
+                  className={cn(
+                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
+                    teamFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
+                  )}
+                  value={teamFilter}
+                  onChange={(e) => setTeamFilter(e.target.value)}
+                >
+                  <option value="ALL">All Teams</option>
+                  {teamOptions.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
+              </div>
+
+              {/* Date Filter */}
+              <div className="relative">
+                <Calendar className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", dateFilter ? "text-brand-500" : "text-ink-400")} />
+                <input
+                  type="date"
+                  className={cn(
+                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-4 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
+                    dateFilter && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
+                  )}
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -181,16 +347,52 @@ function ProjectsPage() {
             {filtered.map((project) => (
               <div
                 key={project.projectId}
-                className="group relative flex flex-col justify-between rounded-2xl border border-surface-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-brand-200 hover:shadow-md"
+                className={cn(
+                  "group relative flex flex-col justify-between rounded-2xl border border-surface-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-brand-200 hover:shadow-md",
+                  activeMenuId === project.projectId ? "z-30 relative" : ""
+                )}
               >
                 <div>
                   <div className="mb-4 flex items-start justify-between">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
                       <Folder className="h-5 w-5" />
                     </div>
-                    <button className="rounded-lg p-2 text-ink-400 hover:bg-surface-50 hover:text-ink-600">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(activeMenuId === project.projectId ? null : project.projectId);
+                        }}
+                        className="rounded-lg p-2 text-ink-400 hover:bg-surface-50 hover:text-ink-600"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+
+                      {activeMenuId === project.projectId && (
+                        <div className="absolute right-0 top-full z-20 mt-1 w-32 rounded-xl border border-surface-200 bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleConfigs(project);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-600 hover:bg-surface-50 hover:text-ink-900"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(project.projectId);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <h3 className="text-lg font-bold text-ink-900">
@@ -243,14 +445,14 @@ function ProjectsPage() {
             ))}
           </div>
         )}
-      </div>
+      </div >
 
       <Modal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Create New Project"
+        onClose={closeModal}
+        title={editingProject ? "Edit Project" : "Create New Project"}
       >
-        <form className="space-y-4" onSubmit={handleCreate}>
+        <form className="space-y-4" onSubmit={handleCreateOrUpdate}>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">
               Project Name
@@ -304,17 +506,27 @@ function ProjectsPage() {
                 ))}
               </Select>
             </div>
+
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-sm font-semibold text-ink-800">
+                Deadline
+              </label>
+              <Input
+                type="date"
+                {...form.register("endDate")}
+              />
+            </div>
           </div>
           <div className="flex items-center justify-end gap-3 pt-4">
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setIsModalOpen(false)}
+              onClick={closeModal}
             >
               Cancel
             </Button>
-            <Button type="submit" loading={createProject.isPending}>
-              Create Project
+            <Button type="submit" loading={createProject.isPending || updateProject.isPending}>
+              {editingProject ? "Save Changes" : "Create Project"}
             </Button>
           </div>
         </form>
