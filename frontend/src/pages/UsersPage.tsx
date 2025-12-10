@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { useForm } from "react-hook-form";
-import { Shield, ShieldAlert, User, Search, Pencil, Trash2, Calendar, X, ChevronDown, Briefcase } from "lucide-react";
+import { Shield, User, Search, Pencil, Trash2, Calendar, X, ChevronDown, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { AppUser } from "@/features/users/types";
@@ -43,20 +43,20 @@ function UsersPage() {
     },
   });
 
-  if (!isAdmin) {
-    return (
-      <div className="flex h-64 flex-col items-center justify-center text-center">
-        <div className="rounded-full bg-red-100 p-3 text-red-600">
-          <ShieldAlert className="h-8 w-8" />
-        </div>
-        <h2 className="mt-4 text-xl font-bold text-ink-900">Access Denied</h2>
-        <p className="mt-2 text-ink-500">
-          You do not have permission to view this page. This section is restricted
-          to administrators only.
-        </p>
-      </div>
-    );
-  }
+  // if (!isAdmin) {
+  //   return (
+  //     <div className="flex h-64 flex-col items-center justify-center text-center">
+  //       <div className="rounded-full bg-red-100 p-3 text-red-600">
+  //         <ShieldAlert className="h-8 w-8" />
+  //       </div>
+  //       <h2 className="mt-4 text-xl font-bold text-ink-900">Access Denied</h2>
+  //       <p className="mt-2 text-ink-500">
+  //         You do not have permission to view this page. This section is restricted
+  //         to administrators only.
+  //       </p>
+  //     </div>
+  //   );
+  // }
 
   const filtered = data?.filter((u) => {
     const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -212,7 +212,7 @@ function UsersPage() {
                 <th className="px-6 py-4 font-semibold">User</th>
                 <th className="px-6 py-4 font-semibold">Role</th>
                 <th className="px-6 py-4 font-semibold">Joined Date</th>
-                <th className="px-6 py-4 text-right font-semibold">Actions</th>
+                {isAdmin && <th className="px-6 py-4 text-right font-semibold">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-100">
@@ -252,33 +252,35 @@ function UsersPage() {
                     <td className="px-6 py-4">
                       {u.createdAt ? formatDate(u.createdAt) : "—"}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditClick(u)}
-                          className="text-ink-400 hover:text-brand-600"
-                          title="Edit User"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteClick(u)}
-                          className="text-ink-400 hover:text-red-600"
-                          title="Delete User"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditClick(u)}
+                            className="text-ink-400 hover:text-brand-600"
+                            title="Edit User"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteClick(u)}
+                            className="text-ink-400 hover:text-red-600"
+                            title="Delete User"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-ink-500">
+                  <td colSpan={isAdmin ? 4 : 3} className="p-8 text-center text-ink-500">
                     No users found matching your search.
                   </td>
                 </tr>

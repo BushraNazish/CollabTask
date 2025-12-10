@@ -1,4 +1,5 @@
 import { useTeams, useCreateTeam, useUpdateTeam, useDeleteTeam } from "@/features/teams/useTeams";
+import { useAuth } from "@/features/auth/AuthContext";
 import { normalizeError } from "@/services/errors";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -13,6 +14,7 @@ import { type Team } from "@/features/teams/types";
 import { TeamDetailsModal } from "@/features/teams/components/TeamDetailsModal";
 
 function TeamsPage() {
+  const { user } = useAuth();
   const { data, isLoading, isError, error } = useTeams();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -96,21 +98,23 @@ function TeamsPage() {
             Collaborate and organize your people into groups.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingTeam(null);
-            form.reset({
-              teamName: "",
-              description: "",
-              status: "ACTIVE",
-            });
-            setIsModalOpen(true);
-          }}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          New Team
-        </Button>
+        {user?.role !== "MEMBER" && (
+          <Button
+            onClick={() => {
+              setEditingTeam(null);
+              form.reset({
+                teamName: "",
+                description: "",
+                status: "ACTIVE",
+              });
+              setIsModalOpen(true);
+            }}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            New Team
+          </Button>
+        )}
       </div>
 
       {/* Overlay to close menus */}
@@ -178,37 +182,41 @@ function TeamsPage() {
                         >
                           <Info className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => setActiveMenuId(activeMenuId === team.teamId ? null : team.teamId)}
-                          className="rounded-lg p-2 text-ink-400 hover:bg-surface-50 hover:text-ink-600"
-                        >
-                          <Settings className="h-4 w-4" />
-                        </button>
+                        {user?.role !== "MEMBER" && (
+                          <>
+                            <button
+                              onClick={() => setActiveMenuId(activeMenuId === team.teamId ? null : team.teamId)}
+                              className="rounded-lg p-2 text-ink-400 hover:bg-surface-50 hover:text-ink-600"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </button>
 
-                        {/* Dropdown Menu */}
-                        {activeMenuId === team.teamId && (
-                          <div className="absolute right-0 top-full mt-1 w-32 rounded-lg border border-surface-200 bg-white p-1 shadow-lg z-20">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditClick(team);
-                              }}
-                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-ink-700 hover:bg-surface-50"
-                            >
-                              <Edit2 className="h-3.5 w-3.5" />
-                              Edit
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteClick(team);
-                              }}
-                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Delete
-                            </button>
-                          </div>
+                            {/* Dropdown Menu */}
+                            {activeMenuId === team.teamId && (
+                              <div className="absolute right-0 top-full mt-1 w-32 rounded-lg border border-surface-200 bg-white p-1 shadow-lg z-20">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditClick(team);
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-ink-700 hover:bg-surface-50"
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClick(team);
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

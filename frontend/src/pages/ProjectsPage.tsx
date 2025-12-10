@@ -378,39 +378,43 @@ function ProjectsPage() {
                       <Folder className="h-5 w-5" />
                     </div>
                     <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveMenuId(activeMenuId === project.projectId ? null : project.projectId);
-                        }}
-                        className="rounded-lg p-2 text-ink-400 hover:bg-surface-50 hover:text-ink-600"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
+                      {user?.role !== "MEMBER" && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuId(activeMenuId === project.projectId ? null : project.projectId);
+                            }}
+                            className="rounded-lg p-2 text-ink-400 hover:bg-surface-50 hover:text-ink-600"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
 
-                      {activeMenuId === project.projectId && (
-                        <div className="absolute right-0 top-full z-20 mt-1 w-32 rounded-xl border border-surface-200 bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleConfigs(project);
-                            }}
-                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-600 hover:bg-surface-50 hover:text-ink-900"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                            Edit
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(project);
-                            }}
-                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Delete
-                          </button>
-                        </div>
+                          {activeMenuId === project.projectId && (
+                            <div className="absolute right-0 top-full z-20 mt-1 w-32 rounded-xl border border-surface-200 bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleConfigs(project);
+                                }}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-600 hover:bg-surface-50 hover:text-ink-900"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(project);
+                                }}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

@@ -1,4 +1,4 @@
-import { useProjects } from "@/features/projects/useProjects";
+import { useProjects, useCreateProject } from "@/features/projects/useProjects";
 import { useTasks } from "@/features/tasks/useTasks";
 import { useTeams } from "@/features/teams/useTeams";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -15,15 +15,64 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { useForm } from "react-hook-form";
+
+
+type CreateProjectForm = {
+  projectName: string;
+  description: string;
+  status: "PLANNING" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED";
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  teamId: string;
+  endDate?: string;
+};
 
 function Dashboard() {
   const { user } = useAuth();
   const { data: projects, isLoading: pLoading } = useProjects();
   const { data: tasks, isLoading: tLoading } = useTasks();
   const { data: teams, isLoading: tmLoading } = useTeams();
+  const createProject = useCreateProject();
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+
+  const form = useForm<CreateProjectForm>({
+    defaultValues: {
+      projectName: "",
+      description: "",
+      status: "PLANNING",
+      priority: "MEDIUM",
+      teamId: "",
+      endDate: "",
+    },
+  });
+
+  const teamOptions = useMemo(() => {
+    return (teams ?? []).map((t) => ({
+      id: t.teamId,
+      label: t.teamName,
+    }));
+  }, [teams]);
+
+  const handleCreate = form.handleSubmit(async (values) => {
+    try {
+      await createProject.mutateAsync({
+        projectName: values.projectName,
+        description: values.description,
+        status: values.status,
+        priority: values.priority,
+        team: values.teamId ? { teamId: Number(values.teamId) } : undefined,
+        endDate: values.endDate ? new Date(values.endDate).toISOString() : undefined,
+      });
+      setIsProjectModalOpen(false);
+      form.reset();
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
   // Calculate stats
   const totalProjects = projects?.length || 0;
@@ -74,7 +123,10 @@ function Dashboard() {
         </div>
         {user?.role !== "MEMBER" && (
           <Button
-            onClick={() => setIsProjectModalOpen(true)}
+            onClick={() => {
+              form.reset();
+              setIsProjectModalOpen(true);
+            }}
             className="bg-white text-brand-900 hover:bg-brand-50 border-transparent shadow-lg transition-transform hover:scale-105"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -238,14 +290,94 @@ function Dashboard() {
         onClose={() => setIsProjectModalOpen(false)}
         title="Create project"
       >
-        <div className="p-4">
-          <p className="text-sm text-ink-500">
-            Project creation is handled in the Projects page for now.
-          </p>
-          <div className="mt-4 flex justify-end">
-            <Button onClick={() => setIsProjectModalOpen(false)}>Close</Button>
+        <form className="space-y-4" onSubmit={handleCreate}>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-ink-800">
+              Project Name <span className="text-red-500">*</span>
+            </label>
+            <Input
+              {...form.register("projectName", { required: "This field cannot be empty" })}
+              placeholder="e.g. Website Redesign"
+              className={cn(form.formState.errors.projectName && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
+            />
+            {form.formState.errors.projectName && (
+              <p className="text-xs text-red-500">{form.formState.errors.projectName.message}</p>
+            )}
           </div>
-        </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-ink-800">
+              Description
+            </label>
+            <Input
+              {...form.register("description")}
+              placeholder="Brief details about the project..."
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-ink-800">
+                Status <span className="text-red-500">*</span>
+              </label>
+              <Select {...form.register("status", { required: "This field cannot be empty" })}>
+                <option value="PLANNING">Planning</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="ON_HOLD">On Hold</option>
+                <option value="COMPLETED">Completed</option>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-ink-800">
+                Priority <span className="text-red-500">*</span>
+              </label>
+              <Select {...form.register("priority", { required: "This field cannot be empty" })}>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </Select>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-sm font-semibold text-ink-800">
+                Assign Team <span className="text-red-500">*</span>
+              </label>
+              <Select
+                {...form.register("teamId", { required: "This field cannot be empty" })}
+                className={cn(form.formState.errors.teamId && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
+              >
+                <option value="">Select a team...</option>
+                {teamOptions.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.label}
+                  </option>
+                ))}
+              </Select>
+              {form.formState.errors.teamId && (
+                <p className="text-xs text-red-500">{form.formState.errors.teamId.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-sm font-semibold text-ink-800">
+                Deadline
+              </label>
+              <Input
+                type="date"
+                {...form.register("endDate")}
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsProjectModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={createProject.isPending}>
+              Create Project
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

@@ -630,18 +630,20 @@ function TasksPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-surface-100 pt-6">
-              <Button
-                variant="secondary"
-                className="text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-100"
-                onClick={() => viewingTask && handleDelete(viewingTask)}
-              >
-                Delete
-              </Button>
-              <Button onClick={() => viewingTask && handleEdit(viewingTask)}>
-                Edit Task
-              </Button>
-            </div>
+            {user?.role !== "MEMBER" && (
+              <div className="flex items-center justify-end gap-3 border-t border-surface-100 pt-6">
+                <Button
+                  variant="secondary"
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-100"
+                  onClick={() => viewingTask && handleDelete(viewingTask)}
+                >
+                  Delete
+                </Button>
+                <Button onClick={() => viewingTask && handleEdit(viewingTask)}>
+                  Edit Task
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Modal>
