@@ -65,6 +65,7 @@ function ProjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
 
   const form = useForm<CreateProjectForm>({
     defaultValues: {
@@ -134,10 +135,15 @@ function ProjectsPage() {
     });
   };
 
-  const handleDelete = async (projectId: number) => {
-    if (window.confirm("Are you sure you want to delete this project?")) {
-      await deleteProject.mutateAsync(projectId);
-      setActiveMenuId(null);
+  const handleDelete = (project: Project) => {
+    setDeletingProject(project);
+    setActiveMenuId(null);
+  };
+
+  const confirmDelete = async () => {
+    if (deletingProject) {
+      await deleteProject.mutateAsync(deletingProject.projectId);
+      setDeletingProject(null);
     }
   };
 
@@ -383,7 +389,7 @@ function ProjectsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDelete(project.projectId);
+                              handleDelete(project);
                             }}
                             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
                           >
@@ -530,6 +536,32 @@ function ProjectsPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={!!deletingProject}
+        onClose={() => setDeletingProject(null)}
+        title="Delete Project"
+      >
+        <div className="space-y-4">
+          <p className="text-ink-600">
+            Are you sure you want to delete <span className="font-bold">{deletingProject?.projectName}</span>?
+            This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setDeletingProject(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 shadow-red-500/20"
+              onClick={confirmDelete}
+              loading={deleteProject.isPending}
+            >
+              Delete Project
+            </Button>
+          </div>
+        </div>
       </Modal>
     </>
   );

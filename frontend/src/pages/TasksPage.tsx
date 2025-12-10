@@ -74,6 +74,7 @@ function TasksPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
 
   const form = useForm<CreateTaskForm>({
     defaultValues: {
@@ -176,10 +177,15 @@ function TasksPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (taskId: number) => {
-    if (window.confirm("Are you sure you want to delete this task?")) {
-      await deleteTask.mutateAsync(taskId);
-      setViewingTask(null);
+  const handleDelete = (task: Task) => {
+    setViewingTask(null);
+    setDeletingTask(task);
+  };
+
+  const confirmDelete = async () => {
+    if (deletingTask) {
+      await deleteTask.mutateAsync(deletingTask.taskId);
+      setDeletingTask(null);
     }
   };
 
@@ -605,7 +611,7 @@ function TasksPage() {
               <Button
                 variant="secondary"
                 className="text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-100"
-                onClick={() => viewingTask && handleDelete(viewingTask.taskId)}
+                onClick={() => viewingTask && handleDelete(viewingTask)}
               >
                 Delete
               </Button>
@@ -617,6 +623,31 @@ function TasksPage() {
         )}
       </Modal>
 
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={!!deletingTask}
+        onClose={() => setDeletingTask(null)}
+        title="Delete Task"
+      >
+        <div className="space-y-4">
+          <p className="text-ink-600">
+            Are you sure you want to delete <span className="font-bold">{deletingTask?.title}</span>?
+            This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setDeletingTask(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 shadow-red-500/20"
+              onClick={confirmDelete}
+              loading={deleteTask.isPending}
+            >
+              Delete Task
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }
