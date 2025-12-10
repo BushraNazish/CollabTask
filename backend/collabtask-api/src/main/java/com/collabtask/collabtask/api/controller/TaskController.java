@@ -35,6 +35,9 @@ public class TaskController {
     @Autowired
     private TaskService taskService;
     
+    @Autowired
+    private com.collabtask.collabtask.api.service.UserService userService;
+    
     @Operation(
         summary = "Get all tasks",
         description = "Retrieves a complete list of all tasks across all projects. Accessible by all authenticated users."
@@ -169,6 +172,10 @@ public class TaskController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public Task createTask(@RequestBody Task task) {
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        com.collabtask.collabtask.api.entity.User currentUser = userService.getUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+        task.setCreatedBy(currentUser);
         return taskService.createTask(task);
     }
     
