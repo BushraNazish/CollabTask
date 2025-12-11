@@ -2,7 +2,9 @@ package com.collabtask.collabtask.api.service;
 
 import com.collabtask.collabtask.api.entity.Project;
 import com.collabtask.collabtask.api.entity.ProjectStatus;
+import com.collabtask.collabtask.api.entity.Team;
 import com.collabtask.collabtask.api.repository.ProjectRepository;
+import com.collabtask.collabtask.api.repository.TeamRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,9 @@ public class ProjectService {
     
     @Autowired
     private ProjectRepository projectRepository;
+    
+    @Autowired
+    private TeamRepository teamRepository;
     
     // Get all projects
     public List<Project> getAllProjects() {
@@ -47,6 +52,11 @@ public class ProjectService {
     
     // Create new project
     public Project createProject(Project project) {
+        if (project.getTeam() != null) {
+            Team team = teamRepository.findById(project.getTeam().getTeamId())
+                    .orElseThrow(() -> new RuntimeException("Team not found"));
+            project.setTeam(team);
+        }
         return projectRepository.save(project);
     }
     
@@ -62,6 +72,12 @@ public class ProjectService {
         existingProject.setPriority(projectDetails.getPriority());
         existingProject.setStartDate(projectDetails.getStartDate());
         existingProject.setEndDate(projectDetails.getEndDate());
+        
+        if (projectDetails.getTeam() != null) {
+            Team team = teamRepository.findById(projectDetails.getTeam().getTeamId())
+                    .orElseThrow(() -> new RuntimeException("Team not found"));
+            existingProject.setTeam(team);
+        }
         
         return projectRepository.save(existingProject);
     }
