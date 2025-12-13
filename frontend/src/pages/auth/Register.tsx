@@ -3,6 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { register as registerUser } from "@/features/auth/api";
 import { useAuth } from "@/features/auth/AuthContext";
 import { type UserRole } from "@/features/auth/types";
@@ -28,6 +30,7 @@ function Register() {
   const navigate = useNavigate();
   const { setSession } = useAuth();
   const { addToast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -65,108 +68,150 @@ function Register() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-ink-900">Create account</h2>
-        <p className="text-sm text-ink-600">
-          Set up your workspace credentials.
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="space-y-1 text-center lg:text-left">
+        <h2 className="text-2xl font-display font-bold tracking-tight text-ink-900">Create account</h2>
+        <p className="text-sm text-ink-500">
+          Get started with your free workspace today.
         </p>
       </div>
-      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-ink-800" htmlFor="name">
-            Name
+
+      <form className="space-y-3" onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-ink-700" htmlFor="name">
+            Name <span className="text-red-500">*</span>
           </label>
-          <input
-            id="name"
-            type="text"
-            className="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            placeholder="Alex Doe"
-            {...form.register("name")}
-          />
+          <div className="relative">
+            <input
+              id="name"
+              type="text"
+              className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all shadow-sm"
+              placeholder="Full Name"
+              {...form.register("name")}
+            />
+          </div>
           {form.formState.errors.name && (
-            <p className="text-xs text-red-600">
+            <p className="text-xs font-medium text-red-600 animate-in slide-in-from-left-1">
               {form.formState.errors.name.message}
             </p>
           )}
         </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-ink-800" htmlFor="email">
-            Email
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-ink-700" htmlFor="email">
+            Email <span className="text-red-500">*</span>
           </label>
-          <input
-            id="email"
-            type="email"
-            className="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            placeholder="you@example.com"
-            {...form.register("email")}
-          />
+          <div className="relative">
+            <input
+              id="email"
+              type="email"
+              className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all shadow-sm"
+              placeholder="name@company.com"
+              {...form.register("email")}
+            />
+          </div>
           {form.formState.errors.email && (
-            <p className="text-xs text-red-600">
+            <p className="text-xs font-medium text-red-600 animate-in slide-in-from-left-1">
               {form.formState.errors.email.message}
             </p>
           )}
         </div>
-        <div className="space-y-2">
+
+        <div className="space-y-1">
           <label
-            className="text-sm font-medium text-ink-800"
+            className="text-xs font-semibold text-ink-700"
             htmlFor="password"
           >
-            Password
+            Password <span className="text-red-500">*</span>
           </label>
-          <input
-            id="password"
-            type="password"
-            className="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            placeholder="••••••••"
-            {...form.register("password")}
-          />
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              className="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 pr-10 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all shadow-sm"
+              placeholder="At least 8 characters"
+              {...form.register("password")}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-ink-400 hover:bg-surface-100 hover:text-ink-600 transition-colors"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
           {form.formState.errors.password && (
-            <p className="text-xs text-red-600">
+            <p className="text-xs font-medium text-red-600 animate-in slide-in-from-left-1">
               {form.formState.errors.password.message}
             </p>
           )}
         </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-ink-800" htmlFor="role">
-            Role
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-ink-700" htmlFor="role">
+            Role <span className="text-red-500">*</span>
           </label>
-          <select
-            id="role"
-            className="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            {...form.register("role")}
-          >
-            {(["ADMIN", "MANAGER", "MEMBER"] as UserRole[]).map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id="role"
+              className="w-full appearance-none rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all shadow-sm"
+              {...form.register("role")}
+            >
+              {(["ADMIN", "MANAGER", "MEMBER"] as UserRole[]).map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
+          </div>
           {form.formState.errors.role && (
-            <p className="text-xs text-red-600">
+            <p className="text-xs font-medium text-red-600 animate-in slide-in-from-left-1">
               {form.formState.errors.role.message}
             </p>
           )}
         </div>
+
         {isError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs font-medium text-red-600 animate-in shake">
             {normalizeError(error).message}
           </div>
         )}
+
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-70"
+          className="relative w-full overflow-hidden rounded-lg bg-gradient-to-br from-brand-600 to-brand-700 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-500/25 transition-all hover:to-brand-800 hover:shadow-brand-500/40 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 group"
         >
-          {isPending ? "Creating account..." : "Create account"}
+          {isPending ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Creating account...
+            </span>
+          ) : (
+            "Create Account"
+          )}
         </button>
       </form>
-      <p className="text-sm text-ink-600">
-        Already have an account?{" "}
-        <Link to="/login" className="font-semibold text-brand-700">
+
+      <div className="relative py-2">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-surface-200" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-white px-2 text-ink-400">
+            Already have an account?
+          </span>
+        </div>
+      </div>
+
+      <div className="text-center">
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-ink-900 hover:text-brand-600 transition-colors"
+        >
           Sign in
         </Link>
-      </p>
+      </div>
     </div>
   );
 }

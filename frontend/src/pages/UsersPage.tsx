@@ -1,3 +1,4 @@
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { useUsers, useUpdateUser, useDeleteUser } from "@/features/users/useUsers";
 import { useAuth } from "@/features/auth/AuthContext";
 import { normalizeError } from "@/services/errors";
@@ -6,7 +7,8 @@ import { formatDate } from "@/types/date";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
-import { Shield, ShieldAlert, User, Search, Pencil, Trash2, Calendar, X, ChevronDown, Briefcase } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { Shield, User, Search, Pencil, Trash2, Calendar, X, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { AppUser } from "@/features/users/types";
@@ -26,61 +28,70 @@ function UsersPage() {
   const deleteUser = useDeleteUser();
 
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>("");
 
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<AppUser | null>(null);
 
   // Form state
-  // Pre-fill all fields to avoid null constraint issues
-  const [formData, setFormData] = useState({ name: "", email: "", role: "MEMBER" as UserRole });
+  // Form state
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      email: "",
+      role: "MEMBER" as UserRole,
+    },
+  });
 
-  if (!isAdmin) {
-    return (
-      <div className="flex h-64 flex-col items-center justify-center text-center">
-        <div className="rounded-full bg-red-100 p-3 text-red-600">
-          <ShieldAlert className="h-8 w-8" />
-        </div>
-        <h2 className="mt-4 text-xl font-bold text-ink-900">Access Denied</h2>
-        <p className="mt-2 text-ink-500">
-          You do not have permission to view this page. This section is restricted
-          to administrators only.
-        </p>
-      </div>
-    );
-  }
+  // if (!isAdmin) {
+  //   return (
+  //     <div className="flex h-64 flex-col items-center justify-center text-center">
+  //       <div className="rounded-full bg-red-100 p-3 text-red-600">
+  //         <ShieldAlert className="h-8 w-8" />
+  //       </div>
+  //       <h2 className="mt-4 text-xl font-bold text-ink-900">Access Denied</h2>
+  //       <p className="mt-2 text-ink-500">
+  //         You do not have permission to view this page. This section is restricted
+  //         to administrators only.
+  //       </p>
+  //     </div>
+  //   );
+  // }
 
   const filtered = data?.filter((u) => {
     const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter === "ALL" || u.role === roleFilter;
+    const matchesRole = roleFilter.length === 0 || roleFilter.includes(u.role);
     const matchesDate = !dateFilter || (u.createdAt && u.createdAt.startsWith(dateFilter));
     return matchesSearch && matchesRole && matchesDate;
   });
 
   const handleEditClick = (user: AppUser) => {
     setEditingUser(user);
-    setFormData({ name: user.name, email: user.email, role: user.role });
+    form.reset({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
   };
 
   const handleDeleteClick = (user: AppUser) => {
     setDeletingUser(user);
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = form.handleSubmit(async (values) => {
     if (!editingUser) return;
     try {
       await updateUser.mutateAsync({
         userId: editingUser.userId,
-        // Send all fields to ensure no nulls are passed for existing data
-        data: { name: formData.name, email: formData.email, role: formData.role },
+        data: values,
       });
       setEditingUser(null);
     } catch (e) {
       console.error("Failed to update user", e);
     }
-  };
+  });
 
   const handleDelete = async () => {
     if (!deletingUser) return;
@@ -124,7 +135,7 @@ function UsersPage() {
             <button
               onClick={() => {
                 setSearch("");
-                setRoleFilter("ALL");
+                setRoleFilter([]);
                 setDateFilter("");
               }}
               className="group flex items-center gap-2 rounded-xl border border-dashed border-surface-300 px-4 py-2 text-sm font-medium text-ink-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 active:scale-95"
@@ -139,23 +150,17 @@ function UsersPage() {
           {/* Bottom Row: Filters */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {/* Role Filter */}
-            <div className="relative">
-              <Shield className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", roleFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-              <select
-                className={cn(
-                  "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                  roleFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                )}
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-              >
-                <option value="ALL">All Roles</option>
-                <option value="ADMIN">Admin</option>
-                <option value="MANAGER">Manager</option>
-                <option value="MEMBER">Member</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-            </div>
+            <MultiSelect
+              label="All Roles"
+              options={[
+                { id: "ADMIN", label: "Admin" },
+                { id: "MANAGER", label: "Manager" },
+                { id: "MEMBER", label: "Member" },
+              ]}
+              selectedValues={roleFilter}
+              onChange={setRoleFilter}
+              icon={<Shield className={cn("h-4 w-4", roleFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+            />
 
             {/* Date Filter */}
             <div className="relative">
@@ -202,7 +207,7 @@ function UsersPage() {
                 <th className="px-6 py-4 font-semibold">User</th>
                 <th className="px-6 py-4 font-semibold">Role</th>
                 <th className="px-6 py-4 font-semibold">Joined Date</th>
-                <th className="px-6 py-4 text-right font-semibold">Actions</th>
+                {isAdmin && <th className="px-6 py-4 text-right font-semibold">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-100">
@@ -242,33 +247,35 @@ function UsersPage() {
                     <td className="px-6 py-4">
                       {u.createdAt ? formatDate(u.createdAt) : "—"}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditClick(u)}
-                          className="text-ink-400 hover:text-brand-600"
-                          title="Edit User"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteClick(u)}
-                          className="text-ink-400 hover:text-red-600"
-                          title="Delete User"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditClick(u)}
+                            className="text-ink-400 hover:text-brand-600"
+                            title="Edit User"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteClick(u)}
+                            className="text-ink-400 hover:text-red-600"
+                            title="Delete User"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-ink-500">
+                  <td colSpan={isAdmin ? 4 : 3} className="p-8 text-center text-ink-500">
                     No users found matching your search.
                   </td>
                 </tr>
@@ -284,33 +291,44 @@ function UsersPage() {
         onClose={() => setEditingUser(null)}
         title="Edit User"
       >
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-ink-700">
-              Full Name
+        <form className="space-y-4" onSubmit={handleUpdate}>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-ink-800">
+              Full Name <span className="text-red-500">*</span>
             </label>
             <Input
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              {...form.register("name", { required: "This field cannot be empty" })}
+              className={cn(form.formState.errors.name && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
             />
+            {form.formState.errors.name && (
+              <p className="text-xs text-red-500">{form.formState.errors.name.message}</p>
+            )}
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-ink-700">
-              Email
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-ink-800">
+              Email <span className="text-red-500">*</span>
             </label>
             <Input
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              {...form.register("email", {
+                required: "This field cannot be empty",
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: "Invalid email address"
+                }
+              })}
+              className={cn(form.formState.errors.email && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
             />
+            {form.formState.errors.email && (
+              <p className="text-xs text-red-500">{form.formState.errors.email.message}</p>
+            )}
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-ink-700">
-              Role
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-ink-800">
+              Role <span className="text-red-500">*</span>
             </label>
             <select
               className="w-full rounded-xl border border-surface-200 bg-surface-50 p-2.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+              {...form.register("role", { required: "This field cannot be empty" })}
             >
               <option value="MEMBER">MEMBER</option>
               <option value="MANAGER">MANAGER</option>
@@ -318,17 +336,17 @@ function UsersPage() {
             </select>
           </div>
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="secondary" onClick={() => setEditingUser(null)}>
+            <Button variant="secondary" onClick={() => setEditingUser(null)} type="button">
               Cancel
             </Button>
             <Button
-              onClick={handleUpdate}
+              type="submit"
               loading={updateUser.isPending}
             >
               Save Changes
             </Button>
           </div>
-        </div>
+        </form>
       </Modal>
 
       {/* Delete/Details Modal - Using as Confirm Dialog */}

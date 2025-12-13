@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.collabtask.collabtask.api.entity.Team;
 import com.collabtask.collabtask.api.entity.TeamMember;
 import com.collabtask.collabtask.api.entity.User;
+import com.collabtask.collabtask.api.repository.ProjectRepository;
 import com.collabtask.collabtask.api.repository.TeamMemberRepository;
 import com.collabtask.collabtask.api.repository.TeamRepository;
 import com.collabtask.collabtask.api.repository.UserRepository;
@@ -25,6 +26,9 @@ public class TeamService {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private ProjectRepository projectRepository;
     
     // Get all teams
     public List<Team> getAllTeams() {
@@ -60,6 +64,9 @@ public class TeamService {
     
     // Delete team
     public void deleteTeam(Integer teamId) {
+        if (projectRepository.existsByTeam_TeamId(teamId)) {
+            throw new RuntimeException("Cannot delete team. There are projects associated with this team.");
+        }
         teamRepository.deleteById(teamId);
     }
     

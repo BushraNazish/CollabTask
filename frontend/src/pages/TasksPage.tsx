@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/features/tasks/useTasks";
+import { useProjects } from "@/features/projects/useProjects";
 import { useUsers } from "@/features/users/useUsers";
+import { useAuth } from "@/features/auth/AuthContext";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { type Task } from "@/features/tasks/types";
 import { normalizeError } from "@/services/errors";
 import { formatDate } from "@/types/date";
@@ -15,14 +18,12 @@ import {
   Plus,
   Search,
   Calendar,
-  Filter,
   Circle,
   Clock,
   CheckCircle2,
   Info,
   User,
   X,
-  ChevronDown,
   Flag,
   Briefcase,
 } from "lucide-react";
@@ -58,22 +59,25 @@ const statusColors = {
 };
 
 function TasksPage() {
+  const { user } = useAuth();
   const { data, isLoading, isError, error } = useTasks();
+  const { data: projects } = useProjects();
   const { data: users } = useUsers();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
-  const [projectFilter, setProjectFilter] = useState<string>("ALL");
-  const [assigneeFilter, setAssigneeFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [projectFilter, setProjectFilter] = useState<string[]>([]);
+  const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
 
   const form = useForm<CreateTaskForm>({
     defaultValues: {
@@ -88,31 +92,30 @@ function TasksPage() {
   });
 
   const projectOptions = useMemo(() => {
-    const ids = new Set<number>();
-    const list: { id: number; label: string }[] = [];
-    (data ?? []).forEach((t) => {
-      if (t.project?.projectId && !ids.has(t.project.projectId)) {
-        ids.add(t.project.projectId);
-        list.push({
-          id: t.project.projectId,
-          label: t.project.projectName || `Project #${t.project.projectId}`,
-        });
-      }
-    });
-    return list;
-  }, [data]);
+    return (projects ?? []).map((p) => ({
+      id: p.projectId.toString(),
+      label: p.projectName,
+    }));
+  }, [projects]);
+
+  const assigneeOptions = useMemo(() => {
+    return (users ?? []).map((user) => ({
+      id: user.userId.toString(),
+      label: user.name,
+    }));
+  }, [users]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
     return data.filter((task) => {
       const matchesSearch = task.title.toLowerCase().includes(search.toLowerCase());
       const matchesStatus =
-        statusFilter === "ALL" || task.status === statusFilter;
-      const matchesPriority = priorityFilter === "ALL" || task.priority === priorityFilter;
-      const matchesProject = projectFilter === "ALL" || task.project?.projectId?.toString() === projectFilter;
-      const matchesAssignee = assigneeFilter === "ALL" ||
-        ((task.assignedTo as any)?.userId?.toString() === assigneeFilter) ||
-        (task.assignedTo?.id?.toString() === assigneeFilter);
+        statusFilter.length === 0 || statusFilter.includes(task.status);
+      const matchesPriority = priorityFilter.length === 0 || priorityFilter.includes(task.priority);
+      const matchesProject = projectFilter.length === 0 || (task.project?.projectId && projectFilter.includes(task.project.projectId.toString()));
+      const matchesAssignee = assigneeFilter.length === 0 ||
+        ((task.assignedTo as any)?.userId && assigneeFilter.includes((task.assignedTo as any).userId.toString())) ||
+        (task.assignedTo?.id && assigneeFilter.includes(task.assignedTo.id.toString()));
       const matchesDate = !dateFilter || task.dueDate === dateFilter;
 
       return matchesSearch && matchesStatus && matchesPriority && matchesProject && matchesAssignee && matchesDate;
@@ -176,10 +179,15 @@ function TasksPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (taskId: number) => {
-    if (window.confirm("Are you sure you want to delete this task?")) {
-      await deleteTask.mutateAsync(taskId);
-      setViewingTask(null);
+  const handleDelete = (task: Task) => {
+    setViewingTask(null);
+    setDeletingTask(task);
+  };
+
+  const confirmDelete = async () => {
+    if (deletingTask) {
+      await deleteTask.mutateAsync(deletingTask.taskId);
+      setDeletingTask(null);
     }
   };
 
@@ -196,10 +204,27 @@ function TasksPage() {
               Track your daily to-dos and project items.
             </p>
           </div>
-          <Button onClick={() => setIsModalOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Task
-          </Button>
+          {user?.role !== "MEMBER" && (
+            <Button
+              onClick={() => {
+                setEditingTask(null);
+                form.reset({
+                  title: "",
+                  description: "",
+                  status: "TO_DO",
+                  priority: "MEDIUM",
+                  projectId: "",
+                  assigneeId: "",
+                  dueDate: "",
+                });
+                setIsModalOpen(true);
+              }}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              New Task
+            </Button>
+          )}
         </div>
 
         {/* Professional Filter Bar */}
@@ -220,10 +245,10 @@ function TasksPage() {
               <button
                 onClick={() => {
                   setSearch("");
-                  setStatusFilter("ALL");
-                  setPriorityFilter("ALL");
-                  setProjectFilter("ALL");
-                  setAssigneeFilter("ALL");
+                  setStatusFilter([]);
+                  setPriorityFilter([]);
+                  setProjectFilter([]);
+                  setAssigneeFilter([]);
                   setDateFilter("");
                 }}
                 className="group flex items-center gap-2 rounded-xl border border-dashed border-surface-300 px-4 py-2 text-sm font-medium text-ink-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 active:scale-95"
@@ -238,85 +263,49 @@ function TasksPage() {
             {/* Bottom Row: Filters */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {/* Status Filter */}
-              <div className="relative">
-                <Circle className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", statusFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    statusFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="ALL">All Status</option>
-                  <option value="TO_DO">To Do</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Status"
+                options={[
+                  { id: "TO_DO", label: "To Do" },
+                  { id: "IN_PROGRESS", label: "In Progress" },
+                  { id: "COMPLETED", label: "Completed" },
+                ]}
+                selectedValues={statusFilter}
+                onChange={setStatusFilter}
+                icon={<Circle className={cn("h-4 w-4", statusFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Priority Filter */}
-              <div className="relative">
-                <Flag className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", priorityFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    priorityFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                >
-                  <option value="ALL">All Priorities</option>
-                  <option value="CRITICAL">Critical</option>
-                  <option value="HIGH">High</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="LOW">Low</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Priorities"
+                options={[
+                  { id: "CRITICAL", label: "Critical" },
+                  { id: "HIGH", label: "High" },
+                  { id: "MEDIUM", label: "Medium" },
+                  { id: "LOW", label: "Low" },
+                ]}
+                selectedValues={priorityFilter}
+                onChange={setPriorityFilter}
+                icon={<Flag className={cn("h-4 w-4", priorityFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Project Filter */}
-              <div className="relative">
-                <Briefcase className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", projectFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    projectFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={projectFilter}
-                  onChange={(e) => setProjectFilter(e.target.value)}
-                >
-                  <option value="ALL">All Projects</option>
-                  {projectOptions.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Projects"
+                options={projectOptions}
+                selectedValues={projectFilter}
+                onChange={setProjectFilter}
+                icon={<Briefcase className={cn("h-4 w-4", projectFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Assignee Filter */}
-              <div className="relative">
-                <User className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", assigneeFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    assigneeFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={assigneeFilter}
-                  onChange={(e) => setAssigneeFilter(e.target.value)}
-                >
-                  <option value="ALL">All Assignees</option>
-                  {users?.map((user) => (
-                    <option key={user.userId} value={user.userId}>
-                      {user.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Assignees"
+                options={assigneeOptions}
+                selectedValues={assigneeFilter}
+                onChange={setAssigneeFilter}
+                icon={<User className={cn("h-4 w-4", assigneeFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Date Filter */}
               <div className="relative">
@@ -446,12 +435,16 @@ function TasksPage() {
         <form className="space-y-4" onSubmit={handleCreateOrUpdate}>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">
-              Title
+              Title <span className="text-red-500">*</span>
             </label>
             <Input
-              {...form.register("title", { required: true })}
+              {...form.register("title", { required: "This field cannot be empty" })}
               placeholder="e.g. Update documentation"
+              className={cn(form.formState.errors.title && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
             />
+            {form.formState.errors.title && (
+              <p className="text-xs text-red-500">{form.formState.errors.title.message}</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">
@@ -465,22 +458,28 @@ function TasksPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-semibold text-ink-800">
-                Project
+                Project <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("projectId")}>
-                <option value="">No Project</option>
+              <Select
+                {...form.register("projectId", { required: "This field cannot be empty" })}
+                className={cn(form.formState.errors.projectId && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
+              >
+                <option value="">Select a project...</option>
                 {projectOptions.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.label}
                   </option>
                 ))}
               </Select>
+              {form.formState.errors.projectId && (
+                <p className="text-xs text-red-500">{form.formState.errors.projectId.message}</p>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-semibold text-ink-800">
-                Priority
+                Priority <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("priority")}>
+              <Select {...form.register("priority", { required: "This field cannot be empty" })}>
                 <option value="CRITICAL">Critical</option>
                 <option value="HIGH">High</option>
                 <option value="MEDIUM">Medium</option>
@@ -495,9 +494,9 @@ function TasksPage() {
             </div>
             <div className="space-y-1">
               <label className="text-sm font-semibold text-ink-800">
-                Status
+                Status <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("status")}>
+              <Select {...form.register("status", { required: "This field cannot be empty" })}>
                 <option value="TO_DO">To Do</option>
                 <option value="IN_PROGRESS">In Progress</option>
                 <option value="COMPLETED">Completed</option>
@@ -601,22 +600,49 @@ function TasksPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-surface-100 pt-6">
-              <Button
-                variant="secondary"
-                className="text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-100"
-                onClick={() => viewingTask && handleDelete(viewingTask.taskId)}
-              >
-                Delete
-              </Button>
-              <Button onClick={() => viewingTask && handleEdit(viewingTask)}>
-                Edit Task
-              </Button>
-            </div>
+            {user?.role !== "MEMBER" && (
+              <div className="flex items-center justify-end gap-3 border-t border-surface-100 pt-6">
+                <Button
+                  variant="secondary"
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-100"
+                  onClick={() => viewingTask && handleDelete(viewingTask)}
+                >
+                  Delete
+                </Button>
+                <Button onClick={() => viewingTask && handleEdit(viewingTask)}>
+                  Edit Task
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Modal>
 
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={!!deletingTask}
+        onClose={() => setDeletingTask(null)}
+        title="Delete Task"
+      >
+        <div className="space-y-4">
+          <p className="text-ink-600">
+            Are you sure you want to delete <span className="font-bold">{deletingTask?.title}</span>?
+            This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setDeletingTask(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 shadow-red-500/20"
+              onClick={confirmDelete}
+              loading={deleteTask.isPending}
+            >
+              Delete Task
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

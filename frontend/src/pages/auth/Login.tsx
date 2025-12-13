@@ -2,8 +2,10 @@ import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { login } from "@/features/auth/api";
+import { useState } from "react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useToast } from "@/components/ui/ToastProvider";
 import { normalizeError } from "@/services/errors";
@@ -17,9 +19,10 @@ type FormValues = z.infer<typeof schema>;
 
 function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
+
   const { setSession } = useAuth();
   const { addToast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -35,10 +38,8 @@ function Login() {
         description: "Welcome back!",
         variant: "success",
       });
-      const redirectTo =
-        (location.state as { from?: { pathname?: string } })?.from?.pathname ||
-        "/";
-      navigate(redirectTo, { replace: true });
+      // Always redirect to dashboard on login
+      navigate("/", { replace: true });
     },
     onError: (err) => {
       const normalized = normalizeError(err);
@@ -55,70 +56,106 @@ function Login() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-ink-900">Sign in</h2>
-        <p className="text-sm text-ink-600">
-          Use your CollabTask credentials to continue.
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="space-y-2 text-center lg:text-left">
+        <h2 className="text-3xl font-display font-bold tracking-tight text-ink-900">Welcome back</h2>
+        <p className="text-ink-500">
+          Enter your credentials to access your workspace.
         </p>
       </div>
-      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+
+      <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-ink-800" htmlFor="email">
-            Email
+          <label className="text-sm font-semibold text-ink-700" htmlFor="email">
+            Email Address
           </label>
-          <input
-            id="email"
-            type="email"
-            className="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            placeholder="you@example.com"
-            {...form.register("email")}
-          />
+          <div className="relative">
+            <input
+              id="email"
+              type="email"
+              className="w-full rounded-xl border border-surface-300 bg-white px-4 py-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all shadow-sm"
+              placeholder="name@company.com"
+              {...form.register("email")}
+            />
+          </div>
           {form.formState.errors.email && (
-            <p className="text-xs text-red-600">
+            <p className="text-xs font-medium text-red-600 animate-in slide-in-from-left-1">
               {form.formState.errors.email.message}
             </p>
           )}
         </div>
+
         <div className="space-y-2">
           <label
-            className="text-sm font-medium text-ink-800"
+            className="text-sm font-semibold text-ink-700"
             htmlFor="password"
           >
             Password
           </label>
-          <input
-            id="password"
-            type="password"
-            className="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            placeholder="••••••••"
-            {...form.register("password")}
-          />
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              className="w-full rounded-xl border border-surface-300 bg-white px-4 py-3 pr-10 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10 transition-all shadow-sm"
+              placeholder="••••••••"
+              {...form.register("password")}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-ink-400 hover:bg-surface-100 hover:text-ink-600 transition-colors"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
           {form.formState.errors.password && (
-            <p className="text-xs text-red-600">
+            <p className="text-xs font-medium text-red-600 animate-in slide-in-from-left-1">
               {form.formState.errors.password.message}
             </p>
           )}
         </div>
+
         {isError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-600 animate-in shake">
             {normalizeError(error).message}
           </div>
         )}
+
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-70"
+          className="relative w-full overflow-hidden rounded-xl bg-gradient-to-br from-brand-600 to-brand-700 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-500/25 transition-all hover:to-brand-800 hover:shadow-brand-500/40 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 group"
         >
-          {isPending ? "Signing in..." : "Sign in"}
+          {isPending ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Signing in...
+            </span>
+          ) : (
+            "Sign in to account"
+          )}
         </button>
       </form>
-      <p className="text-sm text-ink-600">
-        Don&apos;t have an account?{" "}
-        <Link to="/register" className="font-semibold text-brand-700">
-          Register
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-surface-200" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-white px-2 text-ink-400">
+            New to CollabTask?
+          </span>
+        </div>
+      </div>
+
+      <div className="text-center">
+        <Link
+          to="/register"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-ink-900 hover:text-brand-600 transition-colors"
+        >
+          Create an account
         </Link>
-      </p>
+      </div>
     </div>
   );
 }

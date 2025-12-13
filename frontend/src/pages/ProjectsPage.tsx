@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useAuth } from "@/features/auth/AuthContext";
 import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from "@/features/projects/useProjects";
+import { useTeams } from "@/features/teams/useTeams";
 import { normalizeError } from "@/services/errors";
 import { formatDate } from "@/types/date";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -14,17 +16,16 @@ import {
   Search,
   Calendar,
   MoreVertical,
-  Filter,
 
   Users,
   Edit2,
   Trash2,
   Circle,
   Flag,
-  ChevronDown,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { type Project } from "@/features/projects/types";
 
 type CreateProjectForm = {
@@ -51,20 +52,25 @@ const priorityColors = {
 };
 
 function ProjectsPage() {
+  const { user } = useAuth();
   const { data, isLoading, isError, error } = useProjects();
+  const { data: teams } = useTeams();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
-  const [teamFilter, setTeamFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [teamFilter, setTeamFilter] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const form = useForm<CreateProjectForm>({
     defaultValues: {
@@ -84,9 +90,9 @@ function ProjectsPage() {
         .toLowerCase()
         .includes(search.toLowerCase());
       const matchesStatus =
-        statusFilter === "ALL" || project.status === statusFilter;
-      const matchesPriority = priorityFilter === "ALL" || project.priority === priorityFilter;
-      const matchesTeam = teamFilter === "ALL" || project.team?.teamId.toString() === teamFilter;
+        statusFilter.length === 0 || statusFilter.includes(project.status);
+      const matchesPriority = priorityFilter.length === 0 || priorityFilter.includes(project.priority);
+      const matchesTeam = teamFilter.length === 0 || (project.team?.teamId && teamFilter.includes(project.team.teamId.toString()));
       const matchesDate = !dateFilter || project.endDate === dateFilter;
 
       return matchesSearch && matchesStatus && matchesPriority && matchesTeam && matchesDate;
@@ -94,19 +100,11 @@ function ProjectsPage() {
   }, [data, search, statusFilter, priorityFilter, teamFilter, dateFilter]);
 
   const teamOptions = useMemo(() => {
-    const ids = new Set<number>();
-    const list: { id: number; label: string }[] = [];
-    (data ?? []).forEach((p) => {
-      if (p.team?.teamId && !ids.has(p.team.teamId)) {
-        ids.add(p.team.teamId);
-        list.push({
-          id: p.team.teamId,
-          label: p.team.teamName || `Team #${p.team.teamId}`,
-        });
-      }
-    });
-    return list;
-  }, [data]);
+    return (teams ?? []).map((t) => ({
+      id: t.teamId.toString(),
+      label: t.teamName,
+    }));
+  }, [teams]);
 
   const handleConfigs = (project: Project) => {
     setActiveMenuId(null);
@@ -134,10 +132,21 @@ function ProjectsPage() {
     });
   };
 
-  const handleDelete = async (projectId: number) => {
-    if (window.confirm("Are you sure you want to delete this project?")) {
-      await deleteProject.mutateAsync(projectId);
-      setActiveMenuId(null);
+  const handleDelete = (project: Project) => {
+    setDeletingProject(project);
+    setActiveMenuId(null);
+  };
+
+  const confirmDelete = async () => {
+    if (deletingProject) {
+      try {
+        setDeleteError(null);
+        await deleteProject.mutateAsync(deletingProject.projectId);
+        setDeletingProject(null);
+      } catch (e: any) {
+        const message = e.response?.data?.message || e.message || "Failed to delete project";
+        setDeleteError(message);
+      }
     }
   };
 
@@ -182,10 +191,28 @@ function ProjectsPage() {
               Manage and track all your team initiatives.
             </p>
           </div>
-          <Button onClick={() => setIsModalOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Project
-          </Button>
+          <div className="flex gap-2">
+            {user?.role !== "MEMBER" && (
+              <Button
+                onClick={() => {
+                  setEditingProject(null);
+                  form.reset({
+                    projectName: "",
+                    description: "",
+                    status: "PLANNING",
+                    priority: "MEDIUM",
+                    teamId: "",
+                    endDate: "",
+                  });
+                  setIsModalOpen(true);
+                }}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New Project
+              </Button>
+            )}
+          </div>
         </div>
 
 
@@ -216,9 +243,9 @@ function ProjectsPage() {
               <button
                 onClick={() => {
                   setSearch("");
-                  setStatusFilter("ALL");
-                  setPriorityFilter("ALL");
-                  setTeamFilter("ALL");
+                  setStatusFilter([]);
+                  setPriorityFilter([]);
+                  setTeamFilter([]);
                   setDateFilter("");
                 }}
                 className="group flex items-center gap-2 rounded-xl border border-dashed border-surface-300 px-4 py-2 text-sm font-medium text-ink-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 active:scale-95"
@@ -233,65 +260,41 @@ function ProjectsPage() {
             {/* Bottom Row: Filters */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {/* Status Filter */}
-              <div className="relative">
-                <Circle className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", statusFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    statusFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="ALL">All Status</option>
-                  <option value="PLANNING">Planning</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="ON_HOLD">On Hold</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Status"
+                options={[
+                  { id: "PLANNING", label: "Planning" },
+                  { id: "IN_PROGRESS", label: "In Progress" },
+                  { id: "ON_HOLD", label: "On Hold" },
+                  { id: "COMPLETED", label: "Completed" },
+                ]}
+                selectedValues={statusFilter}
+                onChange={setStatusFilter}
+                icon={<Circle className={cn("h-4 w-4", statusFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Priority Filter */}
-              <div className="relative">
-                <Flag className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", priorityFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    priorityFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                >
-                  <option value="ALL">All Priorities</option>
-                  <option value="CRITICAL">Critical</option>
-                  <option value="HIGH">High</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="LOW">Low</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Priorities"
+                options={[
+                  { id: "CRITICAL", label: "Critical" },
+                  { id: "HIGH", label: "High" },
+                  { id: "MEDIUM", label: "Medium" },
+                  { id: "LOW", label: "Low" },
+                ]}
+                selectedValues={priorityFilter}
+                onChange={setPriorityFilter}
+                icon={<Flag className={cn("h-4 w-4", priorityFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Team Filter */}
-              <div className="relative">
-                <Users className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors", teamFilter !== "ALL" ? "text-brand-500" : "text-ink-400")} />
-                <select
-                  className={cn(
-                    "h-10 w-full appearance-none rounded-xl border bg-surface-50 pl-10 pr-8 text-sm text-ink-700 transition-all hover:bg-surface-100 hover:border-surface-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10",
-                    teamFilter !== "ALL" && "border-brand-500 bg-brand-50/50 font-medium text-brand-700"
-                  )}
-                  value={teamFilter}
-                  onChange={(e) => setTeamFilter(e.target.value)}
-                >
-                  <option value="ALL">All Teams</option>
-                  {teamOptions.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400 pointer-events-none" />
-              </div>
+              <MultiSelect
+                label="All Teams"
+                options={teamOptions}
+                selectedValues={teamFilter}
+                onChange={setTeamFilter}
+                icon={<Users className={cn("h-4 w-4", teamFilter.length > 0 ? "fill-brand-500 text-brand-500" : "text-ink-400")} />}
+              />
 
               {/* Date Filter */}
               <div className="relative">
@@ -358,39 +361,43 @@ function ProjectsPage() {
                       <Folder className="h-5 w-5" />
                     </div>
                     <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveMenuId(activeMenuId === project.projectId ? null : project.projectId);
-                        }}
-                        className="rounded-lg p-2 text-ink-400 hover:bg-surface-50 hover:text-ink-600"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
+                      {user?.role !== "MEMBER" && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuId(activeMenuId === project.projectId ? null : project.projectId);
+                            }}
+                            className="rounded-lg p-2 text-ink-400 hover:bg-surface-50 hover:text-ink-600"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
 
-                      {activeMenuId === project.projectId && (
-                        <div className="absolute right-0 top-full z-20 mt-1 w-32 rounded-xl border border-surface-200 bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleConfigs(project);
-                            }}
-                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-600 hover:bg-surface-50 hover:text-ink-900"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                            Edit
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(project.projectId);
-                            }}
-                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Delete
-                          </button>
-                        </div>
+                          {activeMenuId === project.projectId && (
+                            <div className="absolute right-0 top-full z-20 mt-1 w-32 rounded-xl border border-surface-200 bg-white p-1 shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleConfigs(project);
+                                }}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-600 hover:bg-surface-50 hover:text-ink-900"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(project);
+                                }}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -455,12 +462,16 @@ function ProjectsPage() {
         <form className="space-y-4" onSubmit={handleCreateOrUpdate}>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">
-              Project Name
+              Project Name <span className="text-red-500">*</span>
             </label>
             <Input
-              {...form.register("projectName", { required: true })}
+              {...form.register("projectName", { required: "This field cannot be empty" })}
               placeholder="e.g. Website Redesign"
+              className={cn(form.formState.errors.projectName && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
             />
+            {form.formState.errors.projectName && (
+              <p className="text-xs text-red-500">{form.formState.errors.projectName.message}</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-800">
@@ -474,9 +485,9 @@ function ProjectsPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-semibold text-ink-800">
-                Status
+                Status <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("status")}>
+              <Select {...form.register("status", { required: "This field cannot be empty" })}>
                 <option value="PLANNING">Planning</option>
                 <option value="IN_PROGRESS">In Progress</option>
                 <option value="ON_HOLD">On Hold</option>
@@ -485,9 +496,9 @@ function ProjectsPage() {
             </div>
             <div className="space-y-1">
               <label className="text-sm font-semibold text-ink-800">
-                Priority
+                Priority <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("priority")}>
+              <Select {...form.register("priority", { required: "This field cannot be empty" })}>
                 <option value="HIGH">High</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="LOW">Low</option>
@@ -495,16 +506,22 @@ function ProjectsPage() {
             </div>
             <div className="space-y-1 sm:col-span-2">
               <label className="text-sm font-semibold text-ink-800">
-                Assign Team
+                Assign Team <span className="text-red-500">*</span>
               </label>
-              <Select {...form.register("teamId")}>
-                <option value="">No Team Assigned</option>
+              <Select
+                {...form.register("teamId", { required: "This field cannot be empty" })}
+                className={cn(form.formState.errors.teamId && "border-red-500 focus:border-red-500 focus:ring-red-500/10")}
+              >
+                <option value="">Select a team...</option>
                 {teamOptions.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.label}
                   </option>
                 ))}
               </Select>
+              {form.formState.errors.teamId && (
+                <p className="text-xs text-red-500">{form.formState.errors.teamId.message}</p>
+              )}
             </div>
 
             <div className="space-y-1 sm:col-span-2">
@@ -530,6 +547,37 @@ function ProjectsPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={!!deletingProject}
+        onClose={() => setDeletingProject(null)}
+        title="Delete Project"
+      >
+        <div className="space-y-4">
+          <p className="text-ink-600">
+            Are you sure you want to delete <span className="font-bold">{deletingProject?.projectName}</span>?
+            This action cannot be undone.
+          </p>
+          {deleteError && (
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 border border-red-100">
+              {deleteError}
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => { setDeletingProject(null); setDeleteError(null); }}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 shadow-red-500/20"
+              onClick={confirmDelete}
+              loading={deleteProject.isPending}
+            >
+              Delete Project
+            </Button>
+          </div>
+        </div>
       </Modal>
     </>
   );

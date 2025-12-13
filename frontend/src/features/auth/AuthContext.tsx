@@ -14,6 +14,7 @@ import {
   type StoredSession,
 } from "@/services/storage";
 import { type SessionUser, type UserRole } from "./types";
+import { useQueryClient } from "@tanstack/react-query";
 
 type AuthState = {
   user: SessionUser | null;
@@ -34,6 +35,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>({
     user: null,
     token: null,
@@ -87,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout: () => {
         setState({ user: null, token: null, hydrated: true });
         persist(null);
+        queryClient.clear();
       },
     }),
     [state],
