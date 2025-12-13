@@ -28,7 +28,30 @@
 
 ## 🗺 User Journey & Interface
 
-The application follows a secure and structured flow. Users interact with a clean, responsive UI to manage their work.
+The application follows a secure and structured flow, as illustrated below. Users interact with a clean, responsive UI to manage their work.
+
+### User Journey Flowchart
+
+```mermaid
+graph TD
+    A[Public Visitor] -->|Access App| B(Login / Register);
+    B -->|Success| C{Has Token?};
+    C -- Yes --> D[Dashboard Layout];
+    C -- No --> B;
+    
+    D --> E[Dashboard Overview];
+    D --> F[Projects Page];
+    D --> G[Tasks Page];
+    D --> H[Teams Page];
+    D --> I[Users Management];
+    
+    F --> F1[Filter Projects];
+    F --> F2[Create/Edit Project];
+    
+    G --> G1[Multi-Select Filters];
+    G --> G2[Task Details Modal];
+    G --> G3[Create/Edit Task];
+```
 
 ### 1. Authentication
 Secure access is verified via JWT.
@@ -126,20 +149,35 @@ erDiagram
     
     USER {
         int user_id PK
+        string name
         string email
-        string role
+        string password
+        enum role "ADMIN, MANAGER, MEMBER"
     }
 
     PROJECT {
         int project_id PK
-        string status
+        string project_name
+        string description
+        enum status "PLANNING, IN_PROGRESS, COMPLETED, ON_HOLD"
         string priority
+        date start_date
+        date end_date
     }
 
     TASK {
         int task_id PK
-        string status
+        string title
+        string description
+        enum priority "HIGH, MEDIUM, LOW"
+        enum status "TO_DO, IN_PROGRESS, COMPLETED"
         date due_date
+    }
+
+    TEAM {
+        int team_id PK
+        string team_name
+        string description
     }
 ```
 
