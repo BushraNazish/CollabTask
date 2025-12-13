@@ -22,6 +22,8 @@ function TeamsPage() {
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [deletingTeam, setDeletingTeam] = useState<Team | null>(null);
+
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [viewingDetailsTeam, setViewingDetailsTeam] = useState<Team | null>(null);
 
   const createTeam = useCreateTeam();
@@ -71,8 +73,18 @@ function TeamsPage() {
 
   const confirmDelete = async () => {
     if (deletingTeam) {
-      await deleteTeam.mutateAsync(deletingTeam.teamId);
-      setDeletingTeam(null);
+      try {
+        setDeleteError(null);
+        await deleteTeam.mutateAsync(deletingTeam.teamId);
+        setDeletingTeam(null);
+      } catch (e: any) {
+        // Backend key for error message is usually "message" or passed via normalizeError
+        // Assuming the error thrown by mutateAsync can be processed or is a simple Error object
+        // If using axios interceptors or react-query's error format, we might need to adjust
+        // For now, attempting to read likely properties
+        const message = e.response?.data?.message || e.message || "Failed to delete team";
+        setDeleteError(message);
+      }
     }
   };
 
@@ -319,8 +331,13 @@ function TeamsPage() {
             Are you sure you want to delete <span className="font-bold">{deletingTeam?.teamName}</span>?
             This action cannot be undone.
           </p>
+          {deleteError && (
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 border border-red-100">
+              {deleteError}
+            </div>
+          )}
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="secondary" onClick={() => setDeletingTeam(null)}>
+            <Button variant="secondary" onClick={() => { setDeletingTeam(null); setDeleteError(null); }}>
               Cancel
             </Button>
             <Button

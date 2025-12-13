@@ -68,7 +68,9 @@ function ProjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const form = useForm<CreateProjectForm>({
     defaultValues: {
@@ -137,8 +139,14 @@ function ProjectsPage() {
 
   const confirmDelete = async () => {
     if (deletingProject) {
-      await deleteProject.mutateAsync(deletingProject.projectId);
-      setDeletingProject(null);
+      try {
+        setDeleteError(null);
+        await deleteProject.mutateAsync(deletingProject.projectId);
+        setDeletingProject(null);
+      } catch (e: any) {
+        const message = e.response?.data?.message || e.message || "Failed to delete project";
+        setDeleteError(message);
+      }
     }
   };
 
@@ -552,8 +560,13 @@ function ProjectsPage() {
             Are you sure you want to delete <span className="font-bold">{deletingProject?.projectName}</span>?
             This action cannot be undone.
           </p>
+          {deleteError && (
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 border border-red-100">
+              {deleteError}
+            </div>
+          )}
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="secondary" onClick={() => setDeletingProject(null)}>
+            <Button variant="secondary" onClick={() => { setDeletingProject(null); setDeleteError(null); }}>
               Cancel
             </Button>
             <Button

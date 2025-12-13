@@ -8,10 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.collabtask.collabtask.api.entity.Project;
 import com.collabtask.collabtask.api.entity.Task;
 import com.collabtask.collabtask.api.entity.TaskPriority;
 import com.collabtask.collabtask.api.entity.TaskStatus;
 import com.collabtask.collabtask.api.entity.User;
+import com.collabtask.collabtask.api.repository.ProjectRepository;
 import com.collabtask.collabtask.api.repository.TaskRepository;
 import com.collabtask.collabtask.api.repository.UserRepository;
 
@@ -23,6 +25,9 @@ public class TaskService {
     
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ProjectRepository projectRepository;
     
     // Get all tasks
     public List<Task> getAllTasks() {
@@ -84,6 +89,16 @@ public class TaskService {
     
     // Create new task
     public Task createTask(Task task) {
+        if (task.getProject() != null) {
+            Project project = projectRepository.findById(task.getProject().getProjectId())
+                    .orElseThrow(() -> new RuntimeException("Project not found"));
+            task.setProject(project);
+        }
+        if (task.getAssignedTo() != null) {
+            User user = userRepository.findById(task.getAssignedTo().getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            task.setAssignedTo(user);
+        }
         return taskRepository.save(task);
     }
     
@@ -98,7 +113,13 @@ public class TaskService {
         existingTask.setStatus(taskDetails.getStatus());
         existingTask.setPriority(taskDetails.getPriority());
         existingTask.setDueDate(taskDetails.getDueDate());
-        existingTask.setAssignedTo(taskDetails.getAssignedTo());
+        if (taskDetails.getAssignedTo() != null) {
+            User user = userRepository.findById(taskDetails.getAssignedTo().getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            existingTask.setAssignedTo(user);
+        } else {
+            existingTask.setAssignedTo(null);
+        }
         
         return taskRepository.save(existingTask);
     }

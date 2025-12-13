@@ -14,6 +14,9 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
     // Find all projects in a team
     List<Project> findByTeam_TeamId(Integer teamId);
     
+    // Check if projects exist for a team
+    boolean existsByTeam_TeamId(Integer teamId);
+    
     // Find projects by status
     List<Project> findByStatus(ProjectStatus status);
     
