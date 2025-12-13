@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { login } from "@/features/auth/api";
 import { useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -19,7 +19,7 @@ type FormValues = z.infer<typeof schema>;
 
 function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
+
   const { setSession } = useAuth();
   const { addToast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
@@ -38,10 +38,8 @@ function Login() {
         description: "Welcome back!",
         variant: "success",
       });
-      const redirectTo =
-        (location.state as { from?: { pathname?: string } })?.from?.pathname ||
-        "/";
-      navigate(redirectTo, { replace: true });
+      // Always redirect to dashboard on login
+      navigate("/", { replace: true });
     },
     onError: (err) => {
       const normalized = normalizeError(err);
