@@ -1,170 +1,168 @@
-# 🚀 CollabTask - Task Management System
+# CollabTask: Full Stack Project Management Platform
 
-A full-stack web application for managing tasks, projects, and teams with role-based access control.
+![Java](https://img.shields.io/badge/Java-17-orange)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)
+![React](https://img.shields.io/badge/React-18-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![Vite](https://img.shields.io/badge/Vite-5-purple)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-cyan)
 
-## 📋 Project Overview
-
-CollabTask is a comprehensive task management system built with modern technologies, featuring:
-- User authentication with JWT
-- Role-based authorization (Admin, Manager, Member)
-- Team and project management
-- Task assignment and tracking
-- RESTful API architecture
-
-## 🛠️ Tech Stack
-
-### Backend
-- **Framework:** Spring Boot 3.4.1
-- **Language:** Java 17
-- **Database:** MySQL 8.0
-- **Security:** Spring Security + JWT
-- **ORM:** Spring Data JPA (Hibernate)
-- **Build Tool:** Maven
-
-### Frontend (Coming Soon)
-- React
-- Axios
-- React Router
-
-## 📂 Project Structure
-```
-CollabTaskProject/
-├── backend/
-│   └── collabtask-api/
-│       ├── src/
-│       │   ├── main/
-│       │   │   ├── java/com/collabtask/collabtask/api/
-│       │   │   │   ├── controller/
-│       │   │   │   ├── dto/
-│       │   │   │   ├── entity/
-│       │   │   │   ├── repository/
-│       │   │   │   ├── security/
-│       │   │   │   └── service/
-│       │   │   └── resources/
-│       │   │       └── application.properties
-│       │   └── test/
-│       └── pom.xml
-└── frontend/ (Coming Soon)
-```
-
-## ✨ Features Implemented
-
-### Phase 1: Database Design ✅
-- Normalized 6-table schema
-- Complex relationships (One-to-Many, Many-to-Many)
-- Proper constraints and indexes
-
-### Phase 2: Backend API ✅
-- 31 REST API endpoints
-- CRUD operations for all entities
-- Complex filtering and search
-- Business logic implementation
-
-### Phase 2B: Security Foundation ✅
-- JWT-based authentication
-- Password encryption with BCrypt
-- User registration and login
-- Stateless session management
-- Public and protected endpoints
-
-## 🔐 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - User login
-
-### Users
-- `GET /api/users` - Get all users
-- `GET /api/users/{id}` - Get user by ID
-- `POST /api/users` - Create user
-- `PUT /api/users/{id}` - Update user
-- `DELETE /api/users/{id}` - Delete user
-
-### Teams
-- `GET /api/teams` - Get all teams
-- `GET /api/teams/{id}` - Get team by ID
-- `POST /api/teams` - Create team
-- And more...
-
-### Projects
-- CRUD operations for projects
-- Filter by team, status, priority
-
-### Tasks
-- CRUD operations for tasks
-- Complex filtering and assignment
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Java 17 or higher
-- MySQL 8.0 or higher
-- Maven 3.6+
-- Git
-
-### Database Setup
-1. Create database:
-```sql
-CREATE DATABASE collabtask_db;
-```
-
-2. Update `application.properties` with your MySQL credentials
-
-### Running the Application
-
-1. Clone the repository:
-```bash
-git clone https://github.com/YOUR_USERNAME/CollabTask.git
-cd CollabTask
-```
-
-2. Navigate to backend:
-```bash
-cd backend/collabtask-api
-```
-
-3. Run the application:
-```bash
-mvn spring-boot:run
-```
-
-4. Server will start at: `http://localhost:8080`
-
-## 📝 Database Schema
-
-- **users** - User accounts with roles
-- **teams** - Team information
-- **team_members** - Team membership (junction table)
-- **projects** - Project details
-- **tasks** - Task information
-- **comments** - Task comments
-
-## 🔒 Security
-
-- JWT token-based authentication
-- BCrypt password hashing
-- Role-based access control (RBAC)
-- Stateless session management
-- CSRF protection disabled (JWT in headers)
-
-## 🎯 Next Steps
-
-- [ ] JWT Filter & Authorization
-- [ ] Input Validation & Error Handling
-- [ ] API Documentation (Swagger)
-- [ ] Frontend Development (React)
-- [ ] Deployment
-
-## 👨‍💻 Author
-
-**Bushra**
-- GitHub: [@BushraNazish](https://github.com/BushraNazish)
-
-## 📄 License
-
-This project is private and not licensed for public use.
+**CollabTask** is a comprehensive project management solution designed to streamline team collaboration. It features a robust **Spring Boot** backend for secure data handling and a modern **React** frontend for an intuitive user experience.
 
 ---
 
-**Status:** 🚧 In Active Development
-**Last Updated:** November 29, 2025
+## 📋 Table of Contents
+- [User Journey & Interface](#-user-journey--interface)
+  - [Authentication](#1-authentication)
+  - [Dashboard](#2-dashboard)
+  - [Project Management](#3-project-management)
+  - [Task Tracking](#4-task-tracking)
+  - [Team & User Management](#5-team--user-management)
+- [Backend Business Logic](#-backend-business-logic)
+  - [Core Rules](#core-rules)
+  - [API Documentation (Swagger)](#api-documentation-swagger)
+  - [Data Model (ERD)](#data-model-erd)
+- [Getting Started](#-getting-started)
+
+---
+
+## 🗺 User Journey & Interface
+
+The application follows a secure and structured flow. Users interact with a clean, responsive UI to manage their work.
+
+### 1. Authentication
+Secure access is verified via JWT.
+- **Register**: New users can create an account.
+- **Login**: Existing users authenticate to receive a secure token.
+
+| Register | Login |
+| :---: | :---: |
+| ![Register Page](images/frontend%20webpages/Register%20Page.png) | ![Login Page](images/frontend%20webpages/Login%20Page.png) |
+
+### 2. Dashboard
+The command center of the application. Provides a high-level overview of project statuses, pending tasks, and team activities.
+
+![Dashboard](images/frontend%20webpages/Dashboard.png)
+
+### 3. Project Management
+Users can create and manage multiple projects.
+- **Projects Page**: View all projects with status indicators.
+- **Filtering**: Filter projects by status or team.
+
+![Projects Page](images/frontend%20webpages/Projects%20Page.png)
+
+### 4. Task Tracking
+The core of productivity.
+- **My Tasks**: A detailed view of all tasks assigned to the user or their team.
+- **Advanced Filtering**: Use the **Professional Filter Bar** to slice data by Status, Priority, Project, or Assignee.
+- **Task Search**: Instant text search for task titles.
+
+![My Tasks Page](images/frontend%20webpages/My%20Tasks%20Page.png)
+
+### 5. Team & User Management
+- **Teams**: Manage team creation and member lists.
+- **Users**: Admin-accessible user management (Edit/Delete users).
+
+| Teams Page | Users Page |
+| :---: | :---: |
+| ![Teams Page](images/frontend%20webpages/Teams%20Page.png) | ![Users Page](images/frontend%20webpages/Users%20Page.png) |
+
+---
+
+## 🧠 Backend Business Logic
+
+The backend enforces strict data integrity and business rules.
+
+### Core Rules
+
+#### Projects
+- **Deletion Protection**: A project *cannot* be deleted if it has associated tasks. This prevents data loss.
+- **Status Workflow**: `PLANNING` → `IN_PROGRESS` → `COMPLETED` (or `ON_HOLD`).
+
+#### Tasks
+- **Overdue Logic**: Tasks are automatically flagged as overdue if `Due Date < Today` and status is not `COMPLETED`.
+- **Assignment**: Tasks can be re-assigned or left unassigned.
+
+#### Access Control (RBAC)
+- **ADMIN**: Full system access (User management, etc.).
+- **MANAGER**: Team and Project management.
+- **MEMBER**: Standard access (Create tasks, update status).
+
+### API Documentation (Swagger)
+
+The API is fully documented using Swagger UI.
+
+#### Auth & Comments
+Endpoints for user authentication and task comments.
+![Auth-Comment](images/backend%20swagger/Auth-Comment.png)
+
+#### Teams & Users
+Endpoints for managing team structures and user accounts.
+![Team-User](images/backend%20swagger/Team-User.png)
+
+#### Projects & Tasks
+Core endpoints for the main application entities.
+![Project-Task](images/backend%20swagger/Project-Task.png)
+
+#### Data Schemas
+Comprehensive request/response bodies.
+![Schemas](images/backend%20swagger/Schemas.png)
+
+### Data Model (ERD)
+
+The following diagram illustrates the relationship between Users, Teams, Projects, and Tasks.
+
+```mermaid
+erDiagram
+    USER ||--o{ PROJECT : "creates"
+    USER ||--o{ TASK : "assigned to"
+    USER ||--o{ TEAM : "creates"
+    USER ||--o{ TEAM_MEMBER : "is member of"
+    
+    TEAM ||--o{ PROJECT : "owns"
+    TEAM ||--o{ TEAM_MEMBER : "has members"
+    
+    PROJECT ||--o{ TASK : "contains"
+    
+    USER {
+        int user_id PK
+        string email
+        string role
+    }
+
+    PROJECT {
+        int project_id PK
+        string status
+        string priority
+    }
+
+    TASK {
+        int task_id PK
+        string status
+        date due_date
+    }
+```
+
+---
+
+## 🚀 Getting Started
+
+To run the full stack application locally:
+
+### 1. Backend (Spring Boot)
+```bash
+cd backend/collabtask-api
+mvn spring-boot:run
+```
+*Server runs on port 8080.*
+
+### 2. Frontend (React)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+*App runs on http://localhost:5173.*
+
+---
+*CollabTask Documentation*
