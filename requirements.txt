@@ -1,0 +1,36 @@
+# CollabTask System Requirements
+
+# Backend Dependencies
+# --------------------
+# Java Development Kit (JDK)
+# Version: 17 or higher
+# Download: https://www.oracle.com/java/technologies/downloads/
+Java>=17
+
+# Build Tool: Maven
+# Version: 3.8+ (Wrapper 'mvnw' is included in backend/collabtask-api)
+Maven>=3.8
+
+# Database: MySQL
+# Version: 8.0 or higher
+# Connection: localhost:3306 (Configurable in application.properties)
+MySQL>=8.0
+
+
+# Frontend Dependencies
+# ---------------------
+# Node.js
+# Version: 18 (LTS) or higher
+# Download: https://nodejs.org/
+Node.js>=18
+
+# Package Manager: npm
+# Version: 9+ or higher (Included with Node.js)
+npm>=9.0
+
+
+# IDE / Development Tools (Recommended)
+# -------------------------------------
+# - IntelliJ IDEA (Community or Ultimate) or VS Code
+# - Postman (for API testing)
+# - MySQL Workbench (for database management)
